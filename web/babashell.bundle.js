@@ -1,4 +1,4 @@
-/* BabaShell browser runtime (JS-like with small sugar) */
+/* BabaShell bundle: runtime + auto-load */
 (() => {
   function toSelectorExpr(raw) {
     const sel = raw.trim();
@@ -65,6 +65,23 @@
     return out.join("\n");
   }
 
+  function emit(msg) {
+    alert(msg);
+  }
+
+  function $(selector) {
+    return document.querySelector(selector);
+  }
+
+  function $$(selector) {
+    return Array.from(document.querySelectorAll(selector));
+  }
+
+  function on(selector, event, handler) {
+    const el = $(selector);
+    if (el) el.addEventListener(event, handler);
+  }
+
   async function runScriptTag(tag) {
     let source = "";
     if (tag.src) {
@@ -89,21 +106,15 @@
     }
   }
 
-  function emit(msg) {
-    alert(msg);
-  }
-
-  function $(selector) {
-    return document.querySelector(selector);
-  }
-
-  function $$(selector) {
-    return Array.from(document.querySelectorAll(selector));
-  }
-
-  function on(selector, event, handler) {
-    const el = $(selector);
-    if (el) el.addEventListener(event, handler);
+  function autoLoadFromScriptTag() {
+    const current = document.currentScript;
+    if (!current) return;
+    const dataSrc = current.getAttribute("data-src");
+    if (!dataSrc) return;
+    const tag = document.createElement("script");
+    tag.type = "text/babashell";
+    tag.src = dataSrc;
+    document.head.appendChild(tag);
   }
 
   window.emit = emit;
@@ -111,6 +122,8 @@
   window.$$ = $$;
   window.on = on;
   window.babashell = { compile: compileBabaShell, boot, emit, $, $$, on };
+
+  autoLoadFromScriptTag();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
