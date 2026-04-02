@@ -22,6 +22,7 @@ public sealed class Lexer
         ["func"] = TokenType.FUNC,
         ["return"] = TokenType.RETURN,
         ["import"] = TokenType.IMPORT,
+        ["clicked"] = TokenType.CLICKED,
         ["true"] = TokenType.TRUE,
         ["false"] = TokenType.FALSE,
         ["null"] = TokenType.NULL,
@@ -90,6 +91,7 @@ public sealed class Lexer
                 AddToken(TokenType.NEWLINE);
                 break;
             case '"': String(); break;
+            case '#': Selector(); break;
             default:
                 if (IsDigit(c))
                 {
@@ -180,6 +182,13 @@ public sealed class Lexer
         AddToken(TokenType.STRING, value.ToString());
     }
 
+    private void Selector()
+    {
+        while (IsSelectorChar(Peek())) Advance();
+        var text = _source.Substring(_start, _current - _start);
+        AddToken(TokenType.SELECTOR, text);
+    }
+
     private bool Match(char expected)
     {
         if (IsAtEnd()) return false;
@@ -212,4 +221,5 @@ public sealed class Lexer
     private static bool IsDigit(char c) => c is >= '0' and <= '9';
     private static bool IsAlpha(char c) => char.IsLetter(c) || c == '_';
     private static bool IsAlphaNumeric(char c) => IsAlpha(c) || IsDigit(c);
+    private static bool IsSelectorChar(char c) => IsAlphaNumeric(c) || c == '-' || c == '_';
 }

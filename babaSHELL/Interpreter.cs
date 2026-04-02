@@ -11,6 +11,7 @@ public sealed class Interpreter
     private BabaEnvironment _environment;
     private readonly HashSet<string> _imported = new(StringComparer.OrdinalIgnoreCase);
     private string _currentFile = string.Empty;
+    private readonly List<WhenEventStmt> _eventHandlers = new();
 
     public Interpreter()
     {
@@ -100,6 +101,9 @@ public sealed class Interpreter
                 throw new ReturnSignal(r.Value == null ? null : Evaluate(r.Value));
             case ImportStmt im:
                 ExecuteImport(im.Path);
+                break;
+            case WhenEventStmt we:
+                _eventHandlers.Add(we);
                 break;
             default:
                 ErrorReporter.Runtime("Unknown statement.");

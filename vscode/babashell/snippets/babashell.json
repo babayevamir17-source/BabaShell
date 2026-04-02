@@ -34,5 +34,12 @@
       "emit ${1:\"text\"}"
     ],
     "description": "Emit to console"
+  },
+  "whenClicked": {
+    "prefix": "when clicked",
+    "body": [
+      "when #${1:id} clicked emit \"${2:text}\""
+    ],
+    "description": "When element clicked"
   }
 }

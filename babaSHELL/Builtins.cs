@@ -15,7 +15,7 @@ public static class Builtins
             Console.WriteLine("Usage: babashell [file.babashell]");
             Console.WriteLine();
             Console.WriteLine("Keywords:");
-            Console.WriteLine("  emit, when, else, loop, func, return, import, true, false, null, and, or, map");
+            Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");
             Console.WriteLine();
             Console.WriteLine("Builtins:");
             Console.WriteLine("  help");

@@ -51,6 +51,13 @@ public sealed class ImportStmt(string Path) : Stmt
     public string Path { get; } = Path;
 }
 
+public sealed class WhenEventStmt(string Selector, string EventName, Stmt Body) : Stmt
+{
+    public string Selector { get; } = Selector;
+    public string EventName { get; } = EventName;
+    public Stmt Body { get; } = Body;
+}
+
 public abstract class Expr { }
 
 public sealed class LiteralExpr(object? Value) : Expr

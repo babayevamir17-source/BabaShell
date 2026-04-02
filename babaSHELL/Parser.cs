@@ -33,7 +33,7 @@ public sealed class Parser
     private Stmt Statement()
     {
         if (Match(TokenType.EMIT)) return PrintStatement();
-        if (Match(TokenType.WHEN)) return IfStatement();
+        if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return ForStatement();
         if (Match(TokenType.RETURN)) return ReturnStatement();
         if (Match(TokenType.IMPORT)) return ImportStatement();
@@ -50,6 +50,22 @@ public sealed class Parser
         }
         ConsumeLineEnd();
         return new PrintStmt(exprs);
+    }
+
+    private Stmt WhenStatement()
+    {
+        if ((Check(TokenType.SELECTOR) || Check(TokenType.STRING)) && CheckNext(TokenType.CLICKED))
+        {
+            var selectorToken = Advance();
+            Advance(); // clicked
+            var selector = selectorToken.Type == TokenType.STRING
+                ? (string)selectorToken.Literal!
+                : selectorToken.Lexeme;
+            var body = Statement();
+            return new WhenEventStmt(selector, "clicked", body);
+        }
+
+        return IfStatement();
     }
 
     private Stmt IfStatement()
@@ -301,6 +317,7 @@ public sealed class Parser
     {
         if (Match(TokenType.NUMBER)) return new LiteralExpr(Previous().Literal);
         if (Match(TokenType.STRING)) return new LiteralExpr(Previous().Literal);
+        if (Match(TokenType.SELECTOR)) return new LiteralExpr(Previous().Literal ?? Previous().Lexeme);
         if (Match(TokenType.TRUE)) return new LiteralExpr(true);
         if (Match(TokenType.FALSE)) return new LiteralExpr(false);
         if (Match(TokenType.NULL)) return new LiteralExpr(null);
@@ -386,6 +403,7 @@ public sealed class Parser
     }
 
     private bool Check(TokenType type) => !IsAtEnd() && Peek().Type == type;
+    private bool CheckNext(TokenType type) => _current + 1 < _tokens.Count && _tokens[_current + 1].Type == type;
 
     private Token Advance()
     {

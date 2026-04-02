@@ -7,6 +7,7 @@ public enum TokenType
     IDENT,
     NUMBER,
     STRING,
+    SELECTOR,
 
     LPAREN, RPAREN,
     LBRACE, RBRACE,
@@ -20,7 +21,7 @@ public enum TokenType
     LESS, LESS_EQUAL,
     RANGE,
 
-    EMIT, WHEN, ELSE, LOOP, FUNC, RETURN, IMPORT,
+    EMIT, WHEN, ELSE, LOOP, FUNC, RETURN, IMPORT, CLICKED,
     TRUE, FALSE, NULL,
     AND, OR,
     MAP
