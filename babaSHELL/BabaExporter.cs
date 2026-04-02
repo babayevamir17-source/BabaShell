@@ -15,13 +15,13 @@ public static class BabaExporter
 
         var absScript = Path.GetFullPath(scriptPath);
         var baseDir = Path.GetDirectoryName(absScript) ?? Directory.GetCurrentDirectory();
-        var htmlPath = Path.Combine(baseDir, "index.html");
-
-        var html = File.Exists(htmlPath)
-            ? File.ReadAllText(htmlPath)
+        var rawScript = File.ReadAllText(absScript);
+        var (htmlPath, script) = BabaHtmlDirective.Parse(rawScript, baseDir);
+        var indexPath = htmlPath ?? Path.Combine(baseDir, "index.html");
+        var html = File.Exists(indexPath)
+            ? File.ReadAllText(indexPath)
             : DefaultHtml(Path.GetFileName(absScript));
 
-        var script = File.ReadAllText(absScript);
         var injected = InjectInline(html, script);
 
         var outPath = outputPath;

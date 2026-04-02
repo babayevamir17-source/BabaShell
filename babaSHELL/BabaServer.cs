@@ -23,10 +23,15 @@ public static class BabaServer
         var baseDir = Path.GetDirectoryName(absPath) ?? Directory.GetCurrentDirectory();
         var version = 1;
         using var watcher = new FileSystemWatcher(baseDir, Path.GetFileName(absPath));
+        using var htmlWatcher = new FileSystemWatcher(baseDir, "*.html");
         watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
         watcher.Changed += (_, __) => Interlocked.Increment(ref version);
         watcher.Renamed += (_, __) => Interlocked.Increment(ref version);
         watcher.EnableRaisingEvents = true;
+        htmlWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
+        htmlWatcher.Changed += (_, __) => Interlocked.Increment(ref version);
+        htmlWatcher.Renamed += (_, __) => Interlocked.Increment(ref version);
+        htmlWatcher.EnableRaisingEvents = true;
 
         var listener = new HttpListener();
         var port = portOverride ?? DefaultPort;
@@ -72,21 +77,18 @@ public static class BabaServer
             var path = ctx.Request.Url?.AbsolutePath ?? "/";
             if (path == "/")
             {
-                var indexPath = Path.Combine(baseDir, "index.html");
-                if (File.Exists(indexPath))
-                {
-                    var html = File.ReadAllText(indexPath);
-                    WriteText(ctx, InjectRuntime(html), "text/html");
-                }
-                else
-                {
-                    WriteText(ctx, HtmlPage(scriptPath));
-                }
+                var scriptSource = File.ReadAllText(scriptPath);
+                var (htmlPath, _) = BabaHtmlDirective.Parse(scriptSource, baseDir);
+                var indexPath = htmlPath ?? Path.Combine(baseDir, "index.html");
+                var html = File.Exists(indexPath) ? File.ReadAllText(indexPath) : HtmlPage(scriptPath);
+                WriteText(ctx, InjectRuntime(html), "text/html");
                 return;
             }
             if (path == "/app.babashell")
             {
-                WriteText(ctx, File.ReadAllText(scriptPath), "text/plain");
+                var scriptSource = File.ReadAllText(scriptPath);
+                var (_, stripped) = BabaHtmlDirective.Parse(scriptSource, baseDir);
+                WriteText(ctx, stripped, "text/plain");
                 return;
             }
             if (path == "/babashell.bundle.js")

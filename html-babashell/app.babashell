@@ -1,4 +1,7 @@
-﻿// Uses existing HTML (index.html)
+﻿use from ./index.html
+
+// bind to existing HTML
+set #out text "Ready"
 
 when #btn click {
   emit "Clicked"

@@ -226,6 +226,9 @@ public sealed class BabaRunner
         Console.WriteLine("       babashell serve file.babashell [port]");
         Console.WriteLine("       babashell export file.babashell [out.html]");
         Console.WriteLine();
+        Console.WriteLine("Web:");
+        Console.WriteLine("  use from ./page.html   // at top of .babashell to bind custom HTML");
+        Console.WriteLine();
         Console.WriteLine("Keywords:");
         Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");
         Console.WriteLine();
