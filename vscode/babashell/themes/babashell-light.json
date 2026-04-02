@@ -1,14 +1,17 @@
 ﻿{
   "name": "BabaShell Light",
   "type": "light",
-  "colors": {},
+  "colors": {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#1A1A1A"
+  },
   "tokenColors": [
-    { "scope": "comment.line.double-slash", "settings": { "foreground": "#7A7A7A" } },
-    { "scope": "string.quoted.double", "settings": { "foreground": "#A15C00" } },
-    { "scope": "constant.numeric", "settings": { "foreground": "#7B4DB8" } },
-    { "scope": "keyword.control", "settings": { "foreground": "#0077B6" } },
-    { "scope": "support.function", "settings": { "foreground": "#0A7D44" } },
-    { "scope": "entity.name.function", "settings": { "foreground": "#B85C00" } },
-    { "scope": "entity.other.attribute-name.id", "settings": { "foreground": "#B00063" } }
+    { "scope": "comment.line.double-slash", "settings": { "foreground": "#6F7F6F", "fontStyle": "italic" } },
+    { "scope": "string.quoted.double", "settings": { "foreground": "#B45309" } },
+    { "scope": "constant.numeric", "settings": { "foreground": "#7C3AED" } },
+    { "scope": "keyword.control", "settings": { "foreground": "#1D4ED8", "fontStyle": "bold" } },
+    { "scope": "support.function", "settings": { "foreground": "#047857" } },
+    { "scope": "entity.name.function", "settings": { "foreground": "#A16207" } },
+    { "scope": "entity.other.attribute-name.id", "settings": { "foreground": "#BE185D" } }
   ]
 }

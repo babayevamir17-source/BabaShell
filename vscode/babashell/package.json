@@ -57,6 +57,19 @@
         "path": "./themes/babashell-light.json"
       }
     ],
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          { "scope": "source.babashell comment.line.double-slash", "settings": { "foreground": "#7A9A7B", "fontStyle": "italic" } },
+          { "scope": "source.babashell string.quoted.double", "settings": { "foreground": "#FFB454" } },
+          { "scope": "source.babashell constant.numeric", "settings": { "foreground": "#C792EA" } },
+          { "scope": "source.babashell keyword.control", "settings": { "foreground": "#82AAFF", "fontStyle": "bold" } },
+          { "scope": "source.babashell support.function", "settings": { "foreground": "#7EE787" } },
+          { "scope": "source.babashell entity.name.function", "settings": { "foreground": "#FFD866" } },
+          { "scope": "source.babashell entity.other.attribute-name.id", "settings": { "foreground": "#FF7AB2" } }
+        ]
+      }
+    },
     "commands": [
       {
         "command": "babashell.runFile",
