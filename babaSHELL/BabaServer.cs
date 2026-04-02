@@ -173,6 +173,56 @@ public static class BabaServer
     return `${m[1]}alert(${m[2]});`;
   }
 
+  function splitArgs(input) {
+    const args = [];
+    let cur = "";
+    let quote = "";
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (quote) {
+        cur += ch;
+        if (ch === quote && input[i - 1] !== "\\") quote = "";
+        continue;
+      }
+      if (ch === "'" || ch === "\"") {
+        quote = ch;
+        cur += ch;
+        continue;
+      }
+      if (/\s/.test(ch)) {
+        if (cur) {
+          args.push(cur);
+          cur = "";
+        }
+        continue;
+      }
+      cur += ch;
+    }
+    if (cur) args.push(cur);
+    return args;
+  }
+
+  function transformSet(line) {
+    const m = line.match(/^(\s*)set\s+(.+?)\s+(text|html|value|class)\s+(.+?)\s*;?\s*$/);
+    if (!m) return line;
+    const indent = m[1] ?? "";
+    const sel = toSelectorExpr(m[2]);
+    const prop = m[3];
+    const val = m[4];
+    const propMap = { text: "textContent", html: "innerHTML", value: "value", class: "className" };
+    const jsProp = propMap[prop] || "textContent";
+    return `${indent}document.querySelector(${sel}).${jsProp} = ${val};`;
+  }
+
+  function transformUi(line) {
+    const m = line.match(/^(\s*)ui\.([A-Za-z_][A-Za-z0-9_]*)\s+(.+?)\s*;?\s*$/);
+    if (!m) return line;
+    const indent = m[1] ?? "";
+    const fn = m[2];
+    const args = splitArgs(m[3]).join(", ");
+    return `${indent}ui.${fn}(${args});`;
+  }
+
   function compileBabaShell(source) {
     const lines = source.replace(/\r\n/g, "\n").split("\n");
     const out = [];
@@ -212,7 +262,9 @@ public static class BabaServer
         continue;
       }
 
-      const replaced = transformEmit(line);
+      let replaced = transformEmit(line);
+      replaced = transformSet(replaced);
+      replaced = transformUi(replaced);
       out.push(replaced);
 
       const openCount = (line.match(/\{/g) || []).length;
@@ -227,6 +279,43 @@ public static class BabaServer
   function $(selector) { return document.querySelector(selector); }
   function $$(selector) { return Array.from(document.querySelectorAll(selector)); }
   function on(selector, event, handler) { const el = $(selector); if (el) el.addEventListener(event, handler); }
+  function applySelector(el, sel) {
+    if (!sel) return;
+    if (sel.startsWith("#")) el.id = sel.slice(1);
+    else if (sel.startsWith(".")) el.className = sel.slice(1);
+  }
+  const ui = {
+    root() { return document.querySelector("#app") || document.body; },
+    title(text) {
+      const h = document.createElement("h1");
+      h.textContent = text ?? "";
+      this.root().appendChild(h);
+      return h;
+    },
+    text(text) {
+      const p = document.createElement("p");
+      p.textContent = text ?? "";
+      this.root().appendChild(p);
+      return p;
+    },
+    button(selector, text) {
+      const btn = document.createElement("button");
+      if (text === undefined) {
+        btn.textContent = selector ?? "";
+      } else {
+        applySelector(btn, selector);
+        btn.textContent = text ?? "";
+      }
+      this.root().appendChild(btn);
+      return btn;
+    },
+    div(selector) {
+      const d = document.createElement("div");
+      applySelector(d, selector ?? "");
+      this.root().appendChild(d);
+      return d;
+    }
+  };
 
   async function runScriptTag(tag) {
     let source = "";
@@ -260,7 +349,8 @@ public static class BabaServer
   window.$ = $;
   window.$$ = $$;
   window.on = on;
-  window.babashell = { compile: compileBabaShell, boot, emit, $, $$, on };
+  window.babashell = { compile: compileBabaShell, boot, emit, $, $$, on, ui };
+  window.ui = ui;
 
   autoLoadFromScriptTag();
   if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", boot); } else { boot(); }

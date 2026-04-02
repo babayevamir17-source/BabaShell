@@ -1,0 +1,16 @@
+﻿// Single-file BabaShell example (UI + JS-like)
+
+ui.title "BabaShell Single Script"
+ui.text "No separate HTML or JS files."
+ui.button "#btn" "Click me"
+ui.button "#btn2" "Hover me"
+
+when #btn click {
+  emit "Clicked"
+  set #btn text "Clicked!"
+}
+
+when #btn2 mouseover {
+  emit "Hover"
+  set #btn2 text "Hovered!"
+}
