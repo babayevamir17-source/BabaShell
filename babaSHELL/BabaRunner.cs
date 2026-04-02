@@ -17,6 +17,24 @@ public sealed class BabaRunner
             {
                 return BabaUpdater.RunAsync().GetAwaiter().GetResult();
             }
+            if (args.Length > 0 && (args[0] == "--check" || args[0] == "-c"))
+            {
+                var path = args.Length > 1 ? args[1] : null;
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    ErrorReporter.Runtime("No input file for --check.");
+                    return 1;
+                }
+                if (!File.Exists(path))
+                {
+                    ErrorReporter.Runtime($"File not found: {path}");
+                    return 1;
+                }
+                var absPath = Path.GetFullPath(path);
+                var source = File.ReadAllText(absPath);
+                ParseOnly(absPath, source);
+                return 0;
+            }
 
             string? path = null;
             if (args.Length > 0)
@@ -117,6 +135,14 @@ public sealed class BabaRunner
         }
     }
 
+    private static void ParseOnly(string path, string source)
+    {
+        var lexer = new Lexer(source);
+        var tokens = lexer.ScanTokens();
+        var parser = new Parser(tokens);
+        _ = parser.Parse();
+    }
+
     private static void WritePrompt(string text, bool isInline = false)
     {
         var prev = Console.ForegroundColor;
@@ -175,9 +201,10 @@ public sealed class BabaRunner
     {
         Console.WriteLine("BabaShell");
         Console.WriteLine("Usage: babashell [file.babashell]");
+        Console.WriteLine("       babashell --check file.babashell");
         Console.WriteLine();
         Console.WriteLine("Keywords:");
-        Console.WriteLine("  emit, when, else, loop, func, return, import, true, false, null, and, or, map");
+        Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");
         Console.WriteLine();
         Console.WriteLine("Builtins:");
         Console.WriteLine("  help");

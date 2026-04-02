@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
+import { execFile } from "child_process";
 
 const KEYWORDS = [
   "emit",
@@ -50,6 +51,8 @@ const BUILTINS = [
 ];
 
 export function activate(context: vscode.ExtensionContext) {
+  const diagnostics = vscode.languages.createDiagnosticCollection("babashell");
+
   const runCmd = vscode.commands.registerCommand("babashell.runFile", async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -83,6 +86,46 @@ export function activate(context: vscode.ExtensionContext) {
     terminal.show(true);
     terminal.sendText(`"${exePath}" "${filePath}"`);
   });
+
+  const runCheck = (doc: vscode.TextDocument) => {
+    if (doc.languageId !== "babashell") return;
+    const config = vscode.workspace.getConfiguration("babashell");
+    const configuredExe = (config.get<string>("executablePath") || "").trim();
+    let exePath = configuredExe || "babashell";
+    if (!configuredExe) {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (workspaceFolder) {
+        const candidate = path.join(workspaceFolder, "dist", "cli", "babashell.exe");
+        if (fs.existsSync(candidate)) {
+          exePath = candidate;
+        }
+      }
+    }
+
+    execFile(exePath, ["--check", doc.fileName], (err, stdout, stderr) => {
+      const output = `${stdout ?? ""}\n${stderr ?? ""}`;
+      const diags: vscode.Diagnostic[] = [];
+      const regex = /Syntax error \((\d+):(\d+)\):\s*(.+)/g;
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(output)) !== null) {
+        const line = Math.max(0, parseInt(match[1], 10) - 1);
+        const col = Math.max(0, parseInt(match[2], 10) - 1);
+        const msg = match[3] || "Syntax error";
+        const range = new vscode.Range(line, col, line, col + 1);
+        diags.push(new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error));
+      }
+      diagnostics.set(doc.uri, diags);
+    });
+  };
+
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument(runCheck),
+    vscode.workspace.onDidSaveTextDocument(runCheck),
+    vscode.window.onDidChangeActiveTextEditor((ed) => {
+      if (ed) runCheck(ed.document);
+    }),
+    diagnostics
+  );
 
   const completionProvider = vscode.languages.registerCompletionItemProvider(
     "babashell",
