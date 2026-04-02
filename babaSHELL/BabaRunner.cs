@@ -17,6 +17,17 @@ public sealed class BabaRunner
             {
                 return BabaUpdater.RunAsync().GetAwaiter().GetResult();
             }
+            if (args.Length > 0 && (args[0] == "serve" || args[0] == "dev"))
+            {
+                if (args.Length < 2)
+                {
+                    ErrorReporter.Runtime("Usage: babashell serve <file.babashell> [port]");
+                    return 1;
+                }
+                int? port = null;
+                if (args.Length >= 3 && int.TryParse(args[2], out var p)) port = p;
+                return BabaServer.Serve(args[1], port);
+            }
             if (args.Length > 0 && (args[0] == "--check" || args[0] == "-c"))
             {
                 var path = args.Length > 1 ? args[1] : null;
@@ -202,6 +213,7 @@ public sealed class BabaRunner
         Console.WriteLine("BabaShell");
         Console.WriteLine("Usage: babashell [file.babashell]");
         Console.WriteLine("       babashell --check file.babashell");
+        Console.WriteLine("       babashell serve file.babashell [port]");
         Console.WriteLine();
         Console.WriteLine("Keywords:");
         Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");

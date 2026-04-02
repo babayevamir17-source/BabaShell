@@ -1,0 +1,265 @@
+using System;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace BabaShell;
+
+public static class BabaServer
+{
+    private const int DefaultPort = 3000;
+
+    public static int Serve(string scriptPath, int? portOverride = null)
+    {
+        if (!File.Exists(scriptPath))
+        {
+            ErrorReporter.Runtime($"File not found: {scriptPath}");
+            return 1;
+        }
+
+        var absPath = Path.GetFullPath(scriptPath);
+        var version = 1;
+        using var watcher = new FileSystemWatcher(Path.GetDirectoryName(absPath) ?? ".", Path.GetFileName(absPath));
+        watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
+        watcher.Changed += (_, __) => Interlocked.Increment(ref version);
+        watcher.Renamed += (_, __) => Interlocked.Increment(ref version);
+        watcher.EnableRaisingEvents = true;
+
+        var listener = new HttpListener();
+        var port = portOverride ?? DefaultPort;
+        while (true)
+        {
+            var prefix = $"http://localhost:{port}/";
+            try
+            {
+                listener.Prefixes.Clear();
+                listener.Prefixes.Add(prefix);
+                listener.Start();
+                break;
+            }
+            catch
+            {
+                port++;
+                if (port > DefaultPort + 50)
+                {
+                    ErrorReporter.Runtime("Unable to start server on localhost.");
+                    return 1;
+                }
+            }
+        }
+
+        Console.WriteLine($"BabaShell dev server running:");
+        Console.WriteLine($"  http://localhost:{port}/");
+        Console.WriteLine($"  watching: {absPath}");
+        Console.WriteLine("Press Ctrl+C to stop.");
+
+        while (listener.IsListening)
+        {
+            var ctx = listener.GetContext();
+            _ = Task.Run(() => Handle(ctx, absPath, port, () => Volatile.Read(ref version)));
+        }
+
+        return 0;
+    }
+
+    private static void Handle(HttpListenerContext ctx, string scriptPath, int port, Func<int> getVersion)
+    {
+        try
+        {
+            var path = ctx.Request.Url?.AbsolutePath ?? "/";
+            if (path == "/")
+            {
+                WriteText(ctx, HtmlPage(scriptPath));
+                return;
+            }
+            if (path == "/app.babashell")
+            {
+                WriteText(ctx, File.ReadAllText(scriptPath), "text/plain");
+                return;
+            }
+            if (path == "/babashell.bundle.js")
+            {
+                WriteText(ctx, BundleJs, "application/javascript");
+                return;
+            }
+            if (path == "/__version")
+            {
+                WriteText(ctx, getVersion().ToString(), "text/plain");
+                return;
+            }
+            if (path == "/__reload.js")
+            {
+                WriteText(ctx, ReloadJs, "application/javascript");
+                return;
+            }
+
+            ctx.Response.StatusCode = 404;
+            WriteText(ctx, "Not found", "text/plain");
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                ctx.Response.StatusCode = 500;
+                WriteText(ctx, "Server error: " + ex.Message, "text/plain");
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+    }
+
+    private static void WriteText(HttpListenerContext ctx, string text, string contentType = "text/html")
+    {
+        var bytes = Encoding.UTF8.GetBytes(text);
+        ctx.Response.ContentType = contentType + "; charset=utf-8";
+        ctx.Response.ContentLength64 = bytes.Length;
+        ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+        ctx.Response.OutputStream.Close();
+    }
+
+    private static string HtmlPage(string scriptPath)
+    {
+        var title = Path.GetFileName(scriptPath);
+        return $@"<!doctype html>
+<html lang=""en"">
+  <head>
+    <meta charset=""utf-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1"">
+    <title>{title}</title>
+  </head>
+  <body>
+    <div id=""app""></div>
+    <script src=""/__reload.js""></script>
+    <script src=""/babashell.bundle.js"" data-src=""/app.babashell""></script>
+  </body>
+</html>";
+    }
+
+    private const string ReloadJs = @"(() => {
+  let v = null;
+  async function poll() {
+    try {
+      const res = await fetch('/__version', { cache: 'no-store' });
+      const t = await res.text();
+      if (v === null) v = t;
+      if (v !== t) location.reload();
+    } catch {}
+    setTimeout(poll, 1000);
+  }
+  poll();
+})();";
+
+    private const string BundleJs = @"/* BabaShell bundle: runtime + auto-load */
+(() => {
+  function toSelectorExpr(raw) {
+    const sel = raw.trim();
+    if (sel.startsWith('\'') || sel.startsWith('\"')) return sel;
+    if (sel.startsWith('#') || sel.startsWith('.') || sel.startsWith('[')) {
+      return JSON.stringify(sel);
+    }
+    return JSON.stringify('#' + sel);
+  }
+
+  function transformEmit(line) {
+    const m = line.match(/^(\s*)emit\s+(.+?)\s*;?\s*$/);
+    if (!m) return line;
+    return `${m[1]}alert(${m[2]});`;
+  }
+
+  function compileBabaShell(source) {
+    const lines = source.replace(/\r\n/g, '\n').split('\n');
+    const out = [];
+    let depth = 0;
+    const whenStack = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      const whenBlock = line.match(/^(\s*)when\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s*\{\s*$/);
+      if (whenBlock) {
+        const indent = whenBlock[1] ?? '';
+        const sel = toSelectorExpr(whenBlock[2]);
+        const evt = whenBlock[3];
+        out.push(`${indent}document.querySelector(${sel}).addEventListener(\"${evt}\", ()=>{`);
+        depth += 1;
+        whenStack.push(depth);
+        continue;
+      }
+
+      const whenSingle = line.match(/^(\s*)when\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s+(.+?)\s*$/);
+      if (whenSingle) {
+        const indent = whenSingle[1] ?? '';
+        const sel = toSelectorExpr(whenSingle[2]);
+        const evt = whenSingle[3];
+        const rest = transformEmit(whenSingle[4].trim()).trim().replace(/;$/, '');
+        out.push(`${indent}document.querySelector(${sel}).addEventListener(\"${evt}\", ()=>{ ${rest}; });`);
+        continue;
+      }
+
+      if (trimmed === '}' && whenStack.length > 0 && whenStack[whenStack.length - 1] === depth) {
+        const indent = line.slice(0, line.indexOf('}'));
+        out.push(`${indent}});`);
+        whenStack.pop();
+        depth -= 1;
+        continue;
+      }
+
+      const replaced = transformEmit(line);
+      out.push(replaced);
+
+      const openCount = (line.match(/\{/g) || []).length;
+      const closeCount = (line.match(/\}/g) || []).length;
+      depth += openCount - closeCount;
+    }
+
+    return out.join('\n');
+  }
+
+  function emit(msg) { alert(msg); }
+  function $(selector) { return document.querySelector(selector); }
+  function $$(selector) { return Array.from(document.querySelectorAll(selector)); }
+  function on(selector, event, handler) { const el = $(selector); if (el) el.addEventListener(event, handler); }
+
+  async function runScriptTag(tag) {
+    let source = '';
+    if (tag.src) {
+      const res = await fetch(tag.src);
+      source = await res.text();
+    } else {
+      source = tag.textContent || '';
+    }
+    const js = compileBabaShell(source);
+    try { new Function(js)(); } catch (err) { console.error('BabaShell runtime error:', err); }
+  }
+
+  async function boot() {
+    const tags = Array.from(document.querySelectorAll('script[type=""text/babashell""]'));
+    for (const tag of tags) { await runScriptTag(tag); }
+  }
+
+  function autoLoadFromScriptTag() {
+    const current = document.currentScript;
+    if (!current) return;
+    const dataSrc = current.getAttribute('data-src');
+    if (!dataSrc) return;
+    const tag = document.createElement('script');
+    tag.type = 'text/babashell';
+    tag.src = dataSrc;
+    document.head.appendChild(tag);
+  }
+
+  window.emit = emit;
+  window.$ = $;
+  window.$$ = $$;
+  window.on = on;
+  window.babashell = { compile: compileBabaShell, boot, emit, $, $$, on };
+
+  autoLoadFromScriptTag();
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
+})();";
+}
