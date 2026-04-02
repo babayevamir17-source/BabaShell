@@ -33,7 +33,7 @@ Source: "{#VsixPath}"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{autoprograms}\\BabaShell"; Filename: "{app}\\babashell.exe"
 
 [Run]
-Filename: "code"; Parameters: "--install-extension ""{app}\\BabaShell.vsix"""; StatusMsg: "Installing VS Code extension..."; Flags: runhidden; Check: IsCodeAvailable and FileExists(ExpandConstant('{app}\\BabaShell.vsix'))
+Filename: "{code:GetCodeExe}"; Parameters: "--install-extension ""{app}\\BabaShell.vsix"""; StatusMsg: "Installing VS Code extension..."; Flags: runhidden; Check: IsCodeAvailable and FileExists(ExpandConstant('{app}\\BabaShell.vsix'))
 #if FileExists(VsixPath)
 Filename: "VSIXInstaller.exe"; Parameters: """{app}\\BabaShell.Vsix.vsix"""; StatusMsg: "Installing Visual Studio extension..."; Flags: runhidden; Check: FileExists(ExpandConstant('{app}\\BabaShell.Vsix.vsix'))
 #endif
@@ -100,7 +100,22 @@ end;
 
 function IsCodeAvailable(): Boolean;
 begin
-  Result := FileSearch('code.cmd', GetEnv('PATH')) <> '';
-  if not Result then
-    Result := FileSearch('code.exe', GetEnv('PATH')) <> '';
+  Result := GetCodeExe() <> '';
+end;
+
+function GetCodeExe(Param: String): String;
+begin
+  Result := FileSearch('code.cmd', GetEnv('PATH'));
+  if Result <> '' then Exit;
+  Result := FileSearch('code.exe', GetEnv('PATH'));
+  if Result <> '' then Exit;
+
+  Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe');
+  if FileExists(Result) then Exit;
+  Result := ExpandConstant('{pf}\Microsoft VS Code\Code.exe');
+  if FileExists(Result) then Exit;
+  Result := ExpandConstant('{pf32}\Microsoft VS Code\Code.exe');
+  if FileExists(Result) then Exit;
+
+  Result := '';
 end;
