@@ -28,6 +28,16 @@ public sealed class BabaRunner
                 if (args.Length >= 3 && int.TryParse(args[2], out var p)) port = p;
                 return BabaServer.Serve(args[1], port);
             }
+            if (args.Length > 0 && (args[0] == "export" || args[0] == "build"))
+            {
+                if (args.Length < 2)
+                {
+                    ErrorReporter.Runtime("Usage: babashell export <file.babashell> [out.html]");
+                    return 1;
+                }
+                var outPath = args.Length >= 3 ? args[2] : null;
+                return BabaExporter.Export(args[1], outPath);
+            }
             if (args.Length > 0 && (args[0] == "--check" || args[0] == "-c"))
             {
                 var checkPath = args.Length > 1 ? args[1] : null;
@@ -214,6 +224,7 @@ public sealed class BabaRunner
         Console.WriteLine("Usage: babashell [file.babashell]");
         Console.WriteLine("       babashell --check file.babashell");
         Console.WriteLine("       babashell serve file.babashell [port]");
+        Console.WriteLine("       babashell export file.babashell [out.html]");
         Console.WriteLine();
         Console.WriteLine("Keywords:");
         Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");

@@ -1,0 +1,77 @@
+using System;
+using System.IO;
+
+namespace BabaShell;
+
+public static class BabaExporter
+{
+    public static int Export(string scriptPath, string? outputPath = null)
+    {
+        if (!File.Exists(scriptPath))
+        {
+            ErrorReporter.Runtime($"File not found: {scriptPath}");
+            return 1;
+        }
+
+        var absScript = Path.GetFullPath(scriptPath);
+        var baseDir = Path.GetDirectoryName(absScript) ?? Directory.GetCurrentDirectory();
+        var htmlPath = Path.Combine(baseDir, "index.html");
+
+        var html = File.Exists(htmlPath)
+            ? File.ReadAllText(htmlPath)
+            : DefaultHtml(Path.GetFileName(absScript));
+
+        var script = File.ReadAllText(absScript);
+        var injected = InjectInline(html, script);
+
+        var outPath = outputPath;
+        if (string.IsNullOrWhiteSpace(outPath))
+        {
+            var name = Path.GetFileNameWithoutExtension(absScript) + ".html";
+            outPath = Path.Combine(baseDir, name);
+        }
+        else if (!Path.IsPathRooted(outPath))
+        {
+            outPath = Path.GetFullPath(Path.Combine(baseDir, outPath));
+        }
+
+        File.WriteAllText(outPath!, injected);
+        Console.WriteLine($"Exported: {outPath}");
+        return 0;
+    }
+
+    private static string InjectInline(string html, string script)
+    {
+        var inject =
+            "<script>\n" + BabaRuntime.BundleJs + "\n</script>\n" +
+            "<script type=\"text/babashell\">\n" + script + "\n</script>\n";
+
+        if (html.Contains("<!-- BABASHELL -->", StringComparison.OrdinalIgnoreCase))
+        {
+            return html.Replace("<!-- BABASHELL -->", inject, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var idx = html.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
+        {
+            return html.Insert(idx, inject);
+        }
+        return html + "\n" + inject;
+    }
+
+    private static string DefaultHtml(string title)
+    {
+        return $@"<!doctype html>
+<html lang=""en"">
+  <head>
+    <meta charset=""utf-8"" />
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1"" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div id=""app""></div>
+    <!-- BABASHELL -->
+  </body>
+</html>";
+    }
+}
