@@ -20,8 +20,9 @@ public static class BabaServer
         }
 
         var absPath = Path.GetFullPath(scriptPath);
+        var baseDir = Path.GetDirectoryName(absPath) ?? Directory.GetCurrentDirectory();
         var version = 1;
-        using var watcher = new FileSystemWatcher(Path.GetDirectoryName(absPath) ?? ".", Path.GetFileName(absPath));
+        using var watcher = new FileSystemWatcher(baseDir, Path.GetFileName(absPath));
         watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
         watcher.Changed += (_, __) => Interlocked.Increment(ref version);
         watcher.Renamed += (_, __) => Interlocked.Increment(ref version);
@@ -58,20 +59,29 @@ public static class BabaServer
         while (listener.IsListening)
         {
             var ctx = listener.GetContext();
-            _ = Task.Run(() => Handle(ctx, absPath, port, () => Volatile.Read(ref version)));
+            _ = Task.Run(() => Handle(ctx, absPath, baseDir, port, () => Volatile.Read(ref version)));
         }
 
         return 0;
     }
 
-    private static void Handle(HttpListenerContext ctx, string scriptPath, int port, Func<int> getVersion)
+    private static void Handle(HttpListenerContext ctx, string scriptPath, string baseDir, int port, Func<int> getVersion)
     {
         try
         {
             var path = ctx.Request.Url?.AbsolutePath ?? "/";
             if (path == "/")
             {
-                WriteText(ctx, HtmlPage(scriptPath));
+                var indexPath = Path.Combine(baseDir, "index.html");
+                if (File.Exists(indexPath))
+                {
+                    var html = File.ReadAllText(indexPath);
+                    WriteText(ctx, InjectRuntime(html), "text/html");
+                }
+                else
+                {
+                    WriteText(ctx, HtmlPage(scriptPath));
+                }
                 return;
             }
             if (path == "/app.babashell")
@@ -92,6 +102,11 @@ public static class BabaServer
             if (path == "/__reload.js")
             {
                 WriteText(ctx, ReloadJs, "application/javascript");
+                return;
+            }
+
+            if (TryServeStatic(ctx, baseDir, path))
+            {
                 return;
             }
 
@@ -137,6 +152,52 @@ public static class BabaServer
     <script src=""/babashell.bundle.js"" data-src=""/app.babashell""></script>
   </body>
 </html>";
+    }
+
+    private static string InjectRuntime(string html)
+    {
+        var inject = "<script src=\"/__reload.js\"></script>\n" +
+                     "<script src=\"/babashell.bundle.js\" data-src=\"/app.babashell\"></script>\n";
+        if (html.Contains("<!-- BABASHELL -->", StringComparison.OrdinalIgnoreCase))
+        {
+            return html.Replace("<!-- BABASHELL -->", inject, StringComparison.OrdinalIgnoreCase);
+        }
+        var idx = html.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
+        {
+            return html.Insert(idx, inject);
+        }
+        return html + "\n" + inject;
+    }
+
+    private static bool TryServeStatic(HttpListenerContext ctx, string baseDir, string urlPath)
+    {
+        var rel = Uri.UnescapeDataString(urlPath.TrimStart('/'));
+        if (string.IsNullOrWhiteSpace(rel)) return false;
+        if (rel.Contains("..")) return false;
+        var full = Path.GetFullPath(Path.Combine(baseDir, rel));
+        if (!full.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!File.Exists(full)) return false;
+
+        var ext = Path.GetExtension(full).ToLowerInvariant();
+        var contentType = ext switch
+        {
+            ".html" => "text/html",
+            ".css" => "text/css",
+            ".js" => "application/javascript",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".svg" => "image/svg+xml",
+            ".gif" => "image/gif",
+            _ => "application/octet-stream"
+        };
+
+        var bytes = File.ReadAllBytes(full);
+        ctx.Response.ContentType = contentType;
+        ctx.Response.ContentLength64 = bytes.Length;
+        ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+        ctx.Response.OutputStream.Close();
+        return true;
     }
 
     private const string ReloadJs = """

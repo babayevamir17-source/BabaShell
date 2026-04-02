@@ -1,0 +1,10 @@
+﻿// Uses existing HTML (index.html)
+
+when #btn click {
+  emit "Clicked"
+  set #out text "Button clicked"
+}
+
+when #btn2 mouseover {
+  set #out text "Hover"
+}
