@@ -2,7 +2,7 @@
   "name": "babashell",
   "displayName": "BabaShell",
   "description": "BabaShell language support: syntax highlighting, autocomplete, and run command",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "babashell",
   "engines": {
     "vscode": "^1.85.0"
