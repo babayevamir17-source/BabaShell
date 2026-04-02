@@ -2,6 +2,14 @@
 bin/
 obj/
 dist/
+vscode/babashell/node_modules/
+vscode/babashell/out/
+vscode/babashell/.vscode/
+vscode/babashell/.cache/
+vscode/babashell/.yarn/
+vscode/babashell/.pnpm/
+vscode/babashell/.npm/
+vscode/babashell/*.vsix
 *.user
 *.suo
 *.userosscache
