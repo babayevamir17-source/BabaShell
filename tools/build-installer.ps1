@@ -2,6 +2,7 @@ param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [string]$IsccPath = "",
+    [string]$Version = "",
     [switch]$SkipVsCode,
     [switch]$SkipVisualStudio
 )
@@ -21,7 +22,11 @@ New-Item -ItemType Directory -Path $vsDir -Force | Out-Null
 
 Write-Host "Publishing BabaShell CLI..."
 $project = Join-Path $repoRoot "babaSHELL\babaSHELL.csproj"
-& dotnet publish $project -c $Configuration -r $Runtime -p:PublishSingleFile=true -p:SelfContained=true -o $cliDir | Out-Host
+if (-not [string]::IsNullOrWhiteSpace($Version)) {
+    & dotnet publish $project -c $Configuration -r $Runtime -p:PublishSingleFile=true -p:SelfContained=true -p:Version=$Version -p:InformationalVersion=$Version -o $cliDir | Out-Host
+} else {
+    & dotnet publish $project -c $Configuration -r $Runtime -p:PublishSingleFile=true -p:SelfContained=true -o $cliDir | Out-Host
+}
 
 if (-not $SkipVsCode) {
     Write-Host "Packaging VS Code extension..."
@@ -68,10 +73,21 @@ if (-not $IsccPath -or !(Test-Path $IsccPath)) {
     throw "ISCC.exe not found. Install Inno Setup 6 or pass -IsccPath."
 }
 
-$pkgJson = Join-Path $repoRoot "vscode\babashell\package.json"
-$version = "0.1.0"
-if (Test-Path $pkgJson) {
-    $version = (Get-Content $pkgJson | ConvertFrom-Json).version
+$version = $Version
+if ([string]::IsNullOrWhiteSpace($version)) {
+    $csproj = Join-Path $repoRoot "babaSHELL\babaSHELL.csproj"
+    if (Test-Path $csproj) {
+        $xml = [xml](Get-Content $csproj)
+        $version = $xml.Project.PropertyGroup.Version
+    }
+}
+if ([string]::IsNullOrWhiteSpace($version)) {
+    $version = "0.1.0"
+}
+
+$cliExe = Join-Path $cliDir "babashell.exe"
+if (Test-Path $cliExe) {
+    Copy-Item $cliExe (Join-Path $dist "babashell-win-x64.exe") -Force
 }
 
 Write-Host "Building installer..."

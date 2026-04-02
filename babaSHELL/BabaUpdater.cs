@@ -59,7 +59,7 @@ public static class BabaUpdater
             WriteColored($"New version available: v{latestVersion}", ConsoleColor.Yellow);
             Console.WriteLine();
 
-            // Find win-x64 exe asset
+            // Find portable CLI exe asset (avoid installer)
             string? downloadUrl = null;
             string? assetName = null;
             if (root.TryGetProperty("assets", out var assets))
@@ -67,8 +67,11 @@ public static class BabaUpdater
                 foreach (var asset in assets.EnumerateArray())
                 {
                     var name = asset.GetProperty("name").GetString() ?? "";
-                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
-                        name.Contains("babashell", StringComparison.OrdinalIgnoreCase))
+                    var isExe = name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+                    var isCli = name.Equals("babashell-win-x64.exe", StringComparison.OrdinalIgnoreCase) ||
+                                name.Equals("babashell.exe", StringComparison.OrdinalIgnoreCase);
+                    var isInstaller = name.Contains("setup", StringComparison.OrdinalIgnoreCase);
+                    if (isExe && isCli && !isInstaller)
                     {
                         downloadUrl = asset.GetProperty("browser_download_url").GetString();
                         assetName = name;

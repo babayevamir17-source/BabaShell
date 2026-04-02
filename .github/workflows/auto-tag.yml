@@ -1,0 +1,44 @@
+name: auto-tag
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version
+        id: ver
+        run: |
+          last_tag=$(git tag -l "v*" --sort=-v:refname | head -n 1)
+          if [ -z "$last_tag" ]; then
+            last_tag="v0.1.0"
+          fi
+          ver=${last_tag#v}
+          IFS='.' read -r major minor patch <<< "$ver"
+          if [ -z "$major" ] || [ -z "$minor" ] || [ -z "$patch" ]; then
+            major=0; minor=1; patch=0
+          fi
+          if [ "$patch" -ge 9 ]; then
+            minor=$((minor+1))
+            patch=0
+          else
+            patch=$((patch+1))
+          fi
+          next="v${major}.${minor}.${patch}"
+          echo "next=$next" >> $GITHUB_OUTPUT
+
+      - name: Create tag
+        run: |
+          next="${{ steps.ver.outputs.next }}"
+          git tag "$next"
+          git push origin "$next"
