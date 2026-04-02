@@ -30,20 +30,20 @@ public sealed class BabaRunner
             }
             if (args.Length > 0 && (args[0] == "--check" || args[0] == "-c"))
             {
-                var path = args.Length > 1 ? args[1] : null;
-                if (string.IsNullOrWhiteSpace(path))
+                var checkPath = args.Length > 1 ? args[1] : null;
+                if (string.IsNullOrWhiteSpace(checkPath))
                 {
                     ErrorReporter.Runtime("No input file for --check.");
                     return 1;
                 }
-                if (!File.Exists(path))
+                if (!File.Exists(checkPath))
                 {
-                    ErrorReporter.Runtime($"File not found: {path}");
+                    ErrorReporter.Runtime($"File not found: {checkPath}");
                     return 1;
                 }
-                var absPath = Path.GetFullPath(path);
-                var source = File.ReadAllText(absPath);
-                ParseOnly(absPath, source);
+                var checkAbsPath = Path.GetFullPath(checkPath);
+                var checkSource = File.ReadAllText(checkAbsPath);
+                ParseOnly(checkAbsPath, checkSource);
                 return 0;
             }
 
