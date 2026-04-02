@@ -100,7 +100,7 @@ end;
 
 function IsCodeAvailable(): Boolean;
 begin
-  Result := GetCodeExe() <> '';
+  Result := GetCodeExe('') <> '';
 end;
 
 function GetCodeExe(Param: String): String;
