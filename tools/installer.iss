@@ -24,7 +24,7 @@ PrivilegesRequired=admin
 
 [Files]
 Source: "{#DistDir}\\cli\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#DistDir}\\vscode\\BabaShell.vsix"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{#DistDir}\\vscode\\BabaShell.vsix'))
+Source: "{#DistDir}\\vscode\\BabaShell.vsix"; DestDir: "{app}"; Flags: ignoreversion
 #if FileExists(VsixPath)
 Source: "{#VsixPath}"; DestDir: "{app}"; Flags: ignoreversion
 #endif
