@@ -1,0 +1,7 @@
+emit "BabaShell ready"
+
+when #btn clicked emit "Hello from BabaShell"
+
+when "#btn2" clicked {
+  emit "Clicked button 2"
+}
