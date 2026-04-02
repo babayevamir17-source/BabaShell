@@ -84,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const terminal = vscode.window.createTerminal({ name: "BabaShell" });
     terminal.show(true);
-    terminal.sendText(`"${exePath}" "${filePath}"`);
+    terminal.sendText(`& "${exePath}" "${filePath}"`);
   });
 
   const runCheck = (doc: vscode.TextDocument) => {
