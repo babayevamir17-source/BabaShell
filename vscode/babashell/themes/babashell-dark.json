@@ -2,5 +2,13 @@
   "name": "BabaShell Dark",
   "type": "dark",
   "colors": {},
-  "tokenColors": []
+  "tokenColors": [
+    { "scope": "comment.line.double-slash", "settings": { "foreground": "#6A8A6B" } },
+    { "scope": "string.quoted.double", "settings": { "foreground": "#E6B86A" } },
+    { "scope": "constant.numeric", "settings": { "foreground": "#C78AF5" } },
+    { "scope": "keyword.control", "settings": { "foreground": "#5FC9FF" } },
+    { "scope": "support.function", "settings": { "foreground": "#7EE787" } },
+    { "scope": "entity.name.function", "settings": { "foreground": "#FFD166" } },
+    { "scope": "entity.other.attribute-name.id", "settings": { "foreground": "#F783C7" } }
+  ]
 }

@@ -1,0 +1,14 @@
+﻿{
+  "name": "BabaShell Light",
+  "type": "light",
+  "colors": {},
+  "tokenColors": [
+    { "scope": "comment.line.double-slash", "settings": { "foreground": "#7A7A7A" } },
+    { "scope": "string.quoted.double", "settings": { "foreground": "#A15C00" } },
+    { "scope": "constant.numeric", "settings": { "foreground": "#7B4DB8" } },
+    { "scope": "keyword.control", "settings": { "foreground": "#0077B6" } },
+    { "scope": "support.function", "settings": { "foreground": "#0A7D44" } },
+    { "scope": "entity.name.function", "settings": { "foreground": "#B85C00" } },
+    { "scope": "entity.other.attribute-name.id", "settings": { "foreground": "#B00063" } }
+  ]
+}

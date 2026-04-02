@@ -2,7 +2,7 @@
   "name": "babashell",
   "displayName": "BabaShell",
   "description": "BabaShell language support: syntax highlighting, autocomplete, and run command",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "babashell",
   "engines": {
     "vscode": "^1.85.0"
@@ -43,6 +43,18 @@
       {
         "language": "babashell",
         "path": "./snippets/babashell.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "BabaShell Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/babashell-dark.json"
+      },
+      {
+        "label": "BabaShell Light",
+        "uiTheme": "vs",
+        "path": "./themes/babashell-light.json"
       }
     ],
     "commands": [
