@@ -1,0 +1,15 @@
+﻿<VSTemplate Version="3.0.0" Type="Project" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005">
+  <TemplateData>
+    <Name>BabaShell Project</Name>
+    <Description>A simple project containing main.babashell</Description>
+    <ProjectType>Visual C#</ProjectType>
+    <DefaultName>BabaShellProject</DefaultName>
+    <CreateNewFolder>true</CreateNewFolder>
+  </TemplateData>
+  <TemplateContent>
+    <Project File="BabaShellProject.csproj" ReplaceParameters="true">
+      <ProjectItem ReplaceParameters="true">main.babashell</ProjectItem>
+      <ProjectItem ReplaceParameters="true">README.md</ProjectItem>
+    </Project>
+  </TemplateContent>
+</VSTemplate>

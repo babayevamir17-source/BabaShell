@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
+  <Extern href="stdidcmd.h" />
+  <Extern href="vsshlids.h" />
+
+  <Commands package="{f0e0c8d4-1bb3-4a10-9f6c-0c8a6c5f9b2a}">
+    <Groups>
+      <Group guid="{b4ef2f59-4e0a-4a2f-9f03-40b73dfb7d4f}" id="0x1000" priority="0x0600">
+        <Parent guid="{5efc7975-14bc-11cf-9b2b-00aa00573819}" id="IDM_VS_MENU_TOOLS" />
+      </Group>
+    </Groups>
+
+    <Buttons>
+      <Button guid="{b4ef2f59-4e0a-4a2f-9f03-40b73dfb7d4f}" id="0x0100" priority="0x0100" type="Button">
+        <Parent guid="{b4ef2f59-4e0a-4a2f-9f03-40b73dfb7d4f}" id="0x1000" />
+        <Icon guid="{00000000-0000-0000-0000-000000000000}" id="1" />
+        <Strings>
+          <ButtonText>Run BabaShell File</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
+  </Commands>
+</CommandTable>

@@ -1,0 +1,29 @@
+emit "BabaShell is running"
+
+func add(a, b) {
+    return a + b
+}
+
+emit "2 + 3 =", add(2, 3)
+
+loop i = 1..5 {
+    emit "i=", i
+}
+
+when 5 > 3 {
+    green("Bigger")
+} else {
+    red("Smaller")
+}
+
+import math
+
+emit "sqrt(9)=", math.sqrt(9)
+
+arr = [1, 2, 3]
+arr[1] = 7
+emit arr
+
+m = map{ "name": "Baba", "age": 1 }
+m["age"] = 2
+emit m

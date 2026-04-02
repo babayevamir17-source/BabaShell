@@ -1,0 +1,133 @@
+{
+  "name": "babashell",
+  "displayName": "BabaShell",
+  "description": "BabaShell language support: syntax highlighting, autocomplete, and run command",
+  "version": "0.1.5",
+  "publisher": "babashell",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages"],
+  "icon": "media/babashell.png",
+  "contributes": {
+    "configuration": {
+      "title": "BabaShell",
+      "properties": {
+        "babashell.executablePath": {
+          "type": "string",
+          "default": "babashell",
+          "description": "Path to the BabaShell executable."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "babashell",
+        "aliases": ["BabaShell", "babashell"],
+        "extensions": [".babashell"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./media/babashell.png",
+          "dark": "./media/babashell.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "babashell",
+        "scopeName": "source.babashell",
+        "path": "./syntaxes/babashell.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "babashell",
+        "path": "./snippets/babashell.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "babashell.runFile",
+        "title": "Run BabaShell File"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "babashell.runFile",
+        "key": "f5",
+        "when": "editorLangId == babashell"
+      },
+      {
+        "command": "babashell.runFile",
+        "key": "ctrl+f5",
+        "when": "editorLangId == babashell"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "babashell.runFile",
+          "when": "editorLangId == babashell",
+          "group": "navigation"
+        }
+      ]
+    },
+    "debuggers": [
+      {
+        "type": "babashell",
+        "label": "BabaShell",
+        "program": "./out/debugAdapter.js",
+        "runtime": "node",
+        "languages": ["babashell"],
+        "configurationAttributes": {
+          "launch": {
+            "required": ["program"],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "The BabaShell file to run."
+              },
+              "args": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Command line arguments."
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "name": "Run BabaShell",
+            "type": "babashell",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}"
+          }
+        ]
+      }
+    ]
+  },
+  "activationEvents": [
+    "onLanguage:babashell",
+    "onCommand:babashell.runFile",
+    "onDebug"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@vscode/debugadapter": "^1.67.0",
+    "@vscode/debugprotocol": "^1.67.0"
+  }
+}

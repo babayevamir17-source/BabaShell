@@ -1,0 +1,12 @@
+﻿<VSTemplate Version="3.0.0" Type="Item" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005">
+  <TemplateData>
+    <Name>BabaShell File</Name>
+    <Description>New .babashell file</Description>
+    <ProjectType>Visual C#</ProjectType>
+    <DefaultName>main.babashell</DefaultName>
+    <ProvideDefaultName>true</ProvideDefaultName>
+  </TemplateData>
+  <TemplateContent>
+    <ProjectItem ReplaceParameters="true">BabaShellFile.babashell</ProjectItem>
+  </TemplateContent>
+</VSTemplate>

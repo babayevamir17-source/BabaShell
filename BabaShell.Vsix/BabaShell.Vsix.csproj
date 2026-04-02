@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>BabaShell.Vsix</RootNamespace>
+    <AssemblyName>BabaShell.Vsix</AssemblyName>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
+    <IncludeDebugSymbolsInVSIXContainer>true</IncludeDebugSymbolsInVSIXContainer>
+    <IncludeDebugSymbolsInLocalVSIXDeployment>true</IncludeDebugSymbolsInLocalVSIXDeployment>
+    <UseCodebase>true</UseCodebase>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.10.2186" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.10.339" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.Logic" Version="17.10.339" />
+    <PackageReference Include="Microsoft.VisualStudio.Text.UI" Version="17.10.339" />
+    <PackageReference Include="Microsoft.VisualStudio.CoreUtility" Version="17.10.339" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="source.extension.vsixmanifest" />
+    <VSCTCompile Include="BabaShellPackage.vsct" />
+    <None Include="Templates\\Project\\BabaShellProject.zip" />
+    <None Include="Templates\\Item\\BabaShellFile.zip" />
+  </ItemGroup>
+</Project>
