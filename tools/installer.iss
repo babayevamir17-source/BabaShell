@@ -98,11 +98,6 @@ begin
   end;
 end;
 
-function IsCodeAvailable(): Boolean;
-begin
-  Result := GetCodeExe('') <> '';
-end;
-
 function GetCodeExe(Param: String): String;
 begin
   Result := FileSearch('code.cmd', GetEnv('PATH'));
@@ -118,4 +113,9 @@ begin
   if FileExists(Result) then Exit;
 
   Result := '';
+end;
+
+function IsCodeAvailable(): Boolean;
+begin
+  Result := GetCodeExe('') <> '';
 end;
