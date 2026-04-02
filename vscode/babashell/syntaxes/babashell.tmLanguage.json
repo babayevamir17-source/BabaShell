@@ -43,6 +43,14 @@
         }
       ]
     },
+    "selectors": {
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name.id",
+          "match": "#[A-Za-z_][A-Za-z0-9_-]*"
+        }
+      ]
+    },
     "functionDecl": {
       "patterns": [
         {
@@ -80,11 +88,3 @@
     }
   }
 }
-    "selectors": {
-      "patterns": [
-        {
-          "name": "entity.other.attribute-name.id",
-          "match": "#[A-Za-z_][A-Za-z0-9_-]*"
-        }
-      ]
-    },
