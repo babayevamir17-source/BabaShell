@@ -45,6 +45,24 @@ public static class BabaRuntime
     return aliases[evt] || evt;
   }
 
+  function isDomEventName(evtRaw) {
+    const evt = normalizeEventName(evtRaw);
+    return [
+      "click",
+      "mouseenter",
+      "mouseleave",
+      "mouseover",
+      "mouseout",
+      "mousedown",
+      "mouseup",
+      "keydown",
+      "keyup",
+      "input",
+      "change",
+      "submit"
+    ].includes(evt);
+  }
+
   function splitArgs(input) {
     const args = [];
     let cur = "";
@@ -152,7 +170,7 @@ public static class BabaRuntime
       const trimmed = line.trim();
 
       const whenBlock = line.match(/^(\s*)when\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s*\{\s*$/);
-      if (whenBlock && /^[#.\["']/.test(whenBlock[2].trim())) {
+      if (whenBlock && isDomEventName(whenBlock[3])) {
         const indent = whenBlock[1] ?? "";
         const sel = toSelectorExpr(whenBlock[2]);
         const evt = normalizeEventName(whenBlock[3]);
@@ -216,7 +234,7 @@ public static class BabaRuntime
       }
 
       const whenSingle = line.match(/^(\s*)when\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s+(.+?)\s*$/);
-      if (whenSingle && /^[#.\["']/.test(whenSingle[2].trim())) {
+      if (whenSingle && isDomEventName(whenSingle[3])) {
         const indent = whenSingle[1] ?? "";
         const sel = toSelectorExpr(whenSingle[2]);
         const evt = normalizeEventName(whenSingle[3]);
@@ -347,6 +365,7 @@ public static class BabaRuntime
 
 """;
 }
+
 
 
 

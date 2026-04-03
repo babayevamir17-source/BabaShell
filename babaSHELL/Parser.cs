@@ -73,7 +73,7 @@ public sealed class Parser
 
     private Stmt WhenStatement()
     {
-        if (Check(TokenType.SELECTOR) || Check(TokenType.STRING))
+        if (Check(TokenType.SELECTOR) || Check(TokenType.STRING) || Check(TokenType.IDENT))
         {
             var selectorToken = Advance();
             string? eventName = null;
@@ -96,10 +96,10 @@ public sealed class Parser
             }
             else
             {
-            var selector = selectorToken.Type == TokenType.STRING
-                ? (string)selectorToken.Literal!
-                : selectorToken.Lexeme;
-            var body = Statement();
+                var selector = selectorToken.Type == TokenType.STRING
+                    ? (string)selectorToken.Literal!
+                    : selectorToken.Lexeme;
+                var body = Statement();
                 return new WhenEventStmt(selector, eventName, body);
             }
         }
