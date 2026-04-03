@@ -36,6 +36,15 @@ public static class BabaRuntime
     return `${m[1]}alert(${m[2]});`;
   }
 
+  function normalizeEventName(evtRaw) {
+    const evt = (evtRaw || "").trim().toLowerCase();
+    const aliases = {
+      clicked: "click",
+      hover: "mouseenter"
+    };
+    return aliases[evt] || evt;
+  }
+
   function splitArgs(input) {
     const args = [];
     let cur = "";
@@ -75,9 +84,9 @@ public static class BabaRuntime
     const propMap = { text: "textContent", html: "innerHTML", value: "value", class: "className" };
     const jsProp = propMap[prop];
     if (jsProp) {
-      return `${indent}document.querySelector(${sel}).${jsProp} = ${val};`;
+      return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.${jsProp} = ${val}; } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
     }
-    return `${indent}document.querySelector(${sel}).setAttribute("${prop}", ${val});`;
+    return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.setAttribute("${prop}", ${val}); } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
   }
 
   function transformUi(line) {
@@ -94,6 +103,7 @@ public static class BabaRuntime
     const out = [];
     let depth = 0;
     const whenStack = [];
+    let whenCounter = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -103,10 +113,11 @@ public static class BabaRuntime
       if (whenBlock) {
         const indent = whenBlock[1] ?? "";
         const sel = toSelectorExpr(whenBlock[2]);
-        const evt = whenBlock[3];
-        out.push(`${indent}document.querySelector(${sel}).addEventListener("${evt}", ()=>{`);
+        const evt = normalizeEventName(whenBlock[3]);
+        const elVar = `__bs_evt_el_${++whenCounter}`;
+        out.push(`${indent}{ const ${elVar} = document.querySelector(${sel}); if (${elVar}) { ${elVar}.addEventListener("${evt}", ()=>{`);
         depth += 1;
-        whenStack.push(depth);
+        whenStack.push({ depth, selectorExpr: sel, elVar });
         continue;
       }
 
@@ -114,16 +125,17 @@ public static class BabaRuntime
       if (whenSingle) {
         const indent = whenSingle[1] ?? "";
         const sel = toSelectorExpr(whenSingle[2]);
-        const evt = whenSingle[3];
+        const evt = normalizeEventName(whenSingle[3]);
         const rest = transformEmit(whenSingle[4].trim()).trim().replace(/;$/, "");
-        out.push(`${indent}document.querySelector(${sel}).addEventListener("${evt}", ()=>{ ${rest}; });`);
+        const elVar = `__bs_evt_el_${++whenCounter}`;
+        out.push(`${indent}{ const ${elVar} = document.querySelector(${sel}); if (${elVar}) { ${elVar}.addEventListener("${evt}", ()=>{ ${rest}; }); } else { console.warn("[BabaShell] event target not found:", ${sel}); } }`);
         continue;
       }
 
-      if (trimmed === "}" && whenStack.length > 0 && whenStack[whenStack.length - 1] === depth) {
+      if (trimmed === "}" && whenStack.length > 0 && whenStack[whenStack.length - 1].depth === depth) {
         const indent = line.slice(0, line.indexOf("}"));
-        out.push(`${indent}});`);
-        whenStack.pop();
+        const state = whenStack.pop();
+        out.push(`${indent}}); } else { console.warn("[BabaShell] event target not found:", ${state.selectorExpr}); } }`);
         depth -= 1;
         continue;
       }
@@ -221,5 +233,8 @@ public static class BabaRuntime
   autoLoadFromScriptTag();
   if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", boot); } else { boot(); }
 })();
+
 """;
 }
+
+

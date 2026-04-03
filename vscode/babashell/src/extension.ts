@@ -6,6 +6,12 @@ import { execFile } from "child_process";
 const KEYWORDS = [
   "emit",
   "when",
+  "use",
+  "from",
+  "set",
+  "ui",
+  "clicked",
+  "hover",
   "else",
   "loop",
   "func",
@@ -20,6 +26,9 @@ const KEYWORDS = [
 ];
 
 const BUILTINS = [
+  "serve",
+  "export",
+  "build",
   "help",
   "red",
   "green",
@@ -163,9 +172,44 @@ export function activate(context: vscode.ExtensionContext) {
             body: new vscode.SnippetString("when ${1:condition} {\n    $0\n} else {\n    \n}")
           },
           {
+            label: "use from",
+            detail: "Bind HTML file",
+            body: new vscode.SnippetString("use from {./${1:index.html}}")
+          },
+          {
+            label: "when clicked",
+            detail: "Element click handler",
+            body: new vscode.SnippetString("when #${1:id} clicked {\n    emit \"${2:Clicked}\"\n    $0\n}")
+          },
+          {
+            label: "when hover",
+            detail: "Element hover handler",
+            body: new vscode.SnippetString("when #${1:id} hover {\n    set #${1:id} class \"${2:hovered}\"\n    $0\n}")
+          },
+          {
             label: "loop",
             detail: "Loop snippet",
             body: new vscode.SnippetString("loop ${1:i} = ${2:1}..${3:10} {\n    $0\n}")
+          },
+          {
+            label: "set text",
+            detail: "Set textContent",
+            body: new vscode.SnippetString("set #${1:id} text \"${2:text}\"")
+          },
+          {
+            label: "set attr",
+            detail: "Set HTML attribute",
+            body: new vscode.SnippetString("set #${1:id} ${2:src} \"${3:value}\"")
+          },
+          {
+            label: "ui.button",
+            detail: "Create button from script",
+            body: new vscode.SnippetString("ui.button \"#${1:id}\" \"${2:text}\"")
+          },
+          {
+            label: "ui.div",
+            detail: "Create div from script",
+            body: new vscode.SnippetString("ui.div \"#${1:id}\"")
           }
         ];
 
@@ -179,7 +223,7 @@ export function activate(context: vscode.ExtensionContext) {
         return items;
       }
     },
-    ...[".", "("]
+    ...[".", "(", "#", "{", " "]
   );
 
   context.subscriptions.push(runCmd, completionProvider);

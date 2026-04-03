@@ -82,7 +82,7 @@
                                         "patterns":  [
                                                          {
                                                              "name":  "keyword.control",
-                                                             "match":  "\\b(emit|when|clicked|else|loop|func|return|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
+                                                             "match":  "\\b(emit|when|clicked|click|hover|mouseover|mouseenter|mouseleave|else|loop|func|return|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
                                                          }
                                                      ]
                                     },

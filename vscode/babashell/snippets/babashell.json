@@ -38,9 +38,20 @@
   "whenClicked": {
     "prefix": "when clicked",
     "body": [
-      "when #${1:id} clicked emit \"${2:text}\""
+      "when #${1:id} clicked {",
+      "    emit \"${2:text}\"",
+      "}"
     ],
     "description": "When element clicked"
+  },
+  "whenHover": {
+    "prefix": "when hover",
+    "body": [
+      "when #${1:id} hover {",
+      "    set #${1:id} class \"${2:hovered}\"",
+      "}"
+    ],
+    "description": "When element hovered"
   },
   "useFrom": {
     "prefix": "use from",
