@@ -1,90 +1,110 @@
-﻿{
-  "$schema": "https://json.schemastore.org/tmlanguage",
-  "name": "BabaShell",
-  "scopeName": "source.babashell",
-  "patterns": [
-    { "include": "#comments" },
-    { "include": "#strings" },
-    { "include": "#numbers" },
-    { "include": "#selectors" },
-    { "include": "#functionDecl" },
-    { "include": "#keywords" },
-    { "include": "#builtins" }
-  ],
-  "repository": {
-    "comments": {
-      "patterns": [
-        {
-          "name": "comment.line.double-slash",
-          "match": "//.*$"
-        }
-      ]
-    },
-    "strings": {
-      "patterns": [
-        {
-          "name": "string.quoted.double",
-          "begin": "\"",
-          "end": "\"",
-          "patterns": [
-            {
-              "name": "constant.character.escape",
-              "match": "\\\\."
-            }
-          ]
-        }
-      ]
-    },
-    "numbers": {
-      "patterns": [
-        {
-          "name": "constant.numeric",
-          "match": "(?<![\\w.])\\d+(?:\\.\\d+)?(?![\\w.])"
-        }
-      ]
-    },
-    "selectors": {
-      "patterns": [
-        {
-          "name": "entity.other.attribute-name.id",
-          "match": "#[A-Za-z_][A-Za-z0-9_-]*"
-        }
-      ]
-    },
-    "functionDecl": {
-      "patterns": [
-        {
-          "name": "meta.function",
-          "match": "\\bfunc\\s+([A-Za-z_][A-Za-z0-9_əğıöüıçşƏĞİÖÜÇŞ]*)",
-          "captures": {
-            "1": {"name": "entity.name.function"}
-          }
-        }
-      ]
-    },
-    "keywords": {
-      "patterns": [
-        {
-          "name": "keyword.control",
-          "match": "\\b(emit|when|clicked|else|loop|func|return|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
-        }
-      ]
-    },
-    "builtins": {
-      "patterns": [
-        {
-          "name": "meta.function-call",
-          "match": "\\b(console)\\.(print)\\b",
-          "captures": {
-            "1": { "name": "support.class" },
-            "2": { "name": "support.function" }
-          }
-        },
-        {
-          "name": "support.function",
-          "match": "\\b(help|red|green|yellow|blue|read|size|lower|upper|trim|contains|split|join|slice|file_read|file_write|file_append|file_exists|file_delete|file_copy|file_move|dir_exists|dir_make|dir_delete|dir_list|now|unix_time|format_time)\\b"
-        }
-      ]
-    }
-  }
+{
+    "$schema":  "https://json.schemastore.org/tmlanguage",
+    "name":  "babashell",
+    "scopeName":  "source.babashell",
+    "patterns":  [
+                     {
+                         "include":  "#comments"
+                     },
+                     {
+                         "include":  "#strings"
+                     },
+                     {
+                         "include":  "#numbers"
+                     },
+                     {
+                         "include":  "#selectors"
+                     },
+                     {
+                         "include":  "#functionDecl"
+                     },
+                     {
+                         "include":  "#keywords"
+                     },
+                     {
+                         "include":  "#builtins"
+                     }
+                 ],
+    "repository":  {
+                       "comments":  {
+                                        "patterns":  [
+                                                         {
+                                                             "name":  "comment.line.double-slash",
+                                                             "match":  "//.*$"
+                                                         }
+                                                     ]
+                                    },
+                       "strings":  {
+                                       "patterns":  [
+                                                        {
+                                                            "name":  "string.quoted.double",
+                                                            "begin":  "\"",
+                                                            "end":  "\"",
+                                                            "patterns":  [
+                                                                             {
+                                                                                 "name":  "constant.character.escape",
+                                                                                 "match":  "\\\\."
+                                                                             }
+                                                                         ]
+                                                        }
+                                                    ]
+                                   },
+                       "numbers":  {
+                                       "patterns":  [
+                                                        {
+                                                            "name":  "constant.numeric",
+                                                            "match":  "(?\u003c![\\w.])\\d+(?:\\.\\d+)?(?![\\w.])"
+                                                        }
+                                                    ]
+                                   },
+                       "selectors":  {
+                                         "patterns":  [
+                                                          {
+                                                              "name":  "entity.other.attribute-name.id",
+                                                              "match":  "#[A-Za-z_][A-Za-z0-9_-]*"
+                                                          }
+                                                      ]
+                                     },
+                       "functionDecl":  {
+                                            "patterns":  [
+                                                             {
+                                                                 "name":  "meta.function",
+                                                                 "match":  "\\bfunc\\s+([A-Za-z_][A-Za-z0-9_əğıöüıçşƏĞİÖÜÇŞ]*)",
+                                                                 "captures":  {
+                                                                                  "1":  {
+                                                                                            "name":  "entity.name.function"
+                                                                                        }
+                                                                              }
+                                                             }
+                                                         ]
+                                        },
+                       "keywords":  {
+                                        "patterns":  [
+                                                         {
+                                                             "name":  "keyword.control",
+                                                             "match":  "\\b(emit|when|clicked|else|loop|func|return|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
+                                                         }
+                                                     ]
+                                    },
+                       "builtins":  {
+                                        "patterns":  [
+                                                         {
+                                                             "name":  "meta.function-call",
+                                                             "match":  "\\b(console)\\.(print)\\b",
+                                                             "captures":  {
+                                                                              "1":  {
+                                                                                        "name":  "support.class"
+                                                                                    },
+                                                                              "2":  {
+                                                                                        "name":  "support.function"
+                                                                                    }
+                                                                          }
+                                                         },
+                                                         {
+                                                             "name":  "support.function",
+                                                             "match":  "\\b(help|red|green|yellow|blue|read|size|lower|upper|trim|contains|split|join|slice|file_read|file_write|file_append|file_exists|file_delete|file_copy|file_move|dir_exists|dir_make|dir_delete|dir_list|now|unix_time|format_time)\\b"
+                                                         }
+                                                     ]
+                                    }
+                   }
 }

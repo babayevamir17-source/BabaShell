@@ -163,6 +163,9 @@ public sealed class BabaRunner
 
     private static void ParseOnly(string path, string source)
     {
+        var baseDir = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
+        var (_, stripped) = BabaHtmlDirective.Parse(source, baseDir);
+        source = stripped;
         var lexer = new Lexer(source);
         var tokens = lexer.ScanTokens();
         var parser = new Parser(tokens);
