@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
+using System.Net.NetworkInformation;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -50,7 +52,7 @@ public static class BabaServer
         {
             try
             {
-                var candidate = new TcpListener(IPAddress.Loopback, port);
+                var candidate = new TcpListener(IPAddress.Any, port);
                 candidate.Start();
                 listener = candidate;
             }
@@ -67,7 +69,12 @@ public static class BabaServer
         }
 
         Console.WriteLine("BabaShell dev server running:");
+        Console.WriteLine($"  http://127.0.0.1:{port}/");
         Console.WriteLine($"  http://localhost:{port}/");
+        foreach (var ip in GetLanIps())
+        {
+            Console.WriteLine($"  http://{ip}:{port}/");
+        }
         Console.WriteLine($"  watching: {absPath}");
         Console.WriteLine("Press Ctrl+C to stop.");
 
@@ -253,5 +260,24 @@ public static class BabaServer
 
     private const string ReloadJs = BabaRuntime.ReloadJs;
     private const string BundleJs = BabaRuntime.BundleJs;
-}
 
+    private static List<string> GetLanIps()
+    {
+        try
+        {
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up &&
+                            n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+                .Select(a => a.Address)
+                .Where(a => a.AddressFamily == AddressFamily.InterNetwork)
+                .Select(a => a.ToString())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+}
