@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -78,16 +79,16 @@ public static class BabaServer
             if (path == "/")
             {
                 var scriptSource = File.ReadAllText(scriptPath);
-                var (htmlPath, _) = BabaHtmlDirective.Parse(scriptSource, baseDir);
-                var indexPath = htmlPath ?? Path.Combine(baseDir, "index.html");
+                var directives = BabaHtmlDirective.ParseAll(scriptSource, baseDir);
+                var indexPath = directives.HtmlPath ?? Path.Combine(baseDir, "index.html");
                 var html = File.Exists(indexPath) ? File.ReadAllText(indexPath) : HtmlPage(scriptPath);
-                WriteText(ctx, InjectRuntime(html), "text/html");
+                WriteText(ctx, InjectRuntime(html, directives.CssPaths, baseDir), "text/html");
                 return;
             }
             if (path == "/app.babashell")
             {
                 var scriptSource = File.ReadAllText(scriptPath);
-                var (_, stripped) = BabaHtmlDirective.Parse(scriptSource, baseDir);
+                var stripped = BabaHtmlDirective.ParseAll(scriptSource, baseDir).Script;
                 WriteText(ctx, stripped, "text/plain");
                 return;
             }
@@ -156,9 +157,18 @@ public static class BabaServer
 </html>";
     }
 
-    private static string InjectRuntime(string html)
+    private static string InjectRuntime(string html, List<string> cssPaths, string baseDir)
     {
-        var inject = "<script src=\"/__reload.js\"></script>\n" +
+        var cssInject = new StringBuilder();
+        foreach (var cssPath in cssPaths)
+        {
+            if (!File.Exists(cssPath)) continue;
+            var rel = Path.GetRelativePath(baseDir, cssPath).Replace("\\", "/");
+            cssInject.AppendLine($"<link rel=\"stylesheet\" href=\"/{rel}\">");
+        }
+
+        var inject = cssInject.ToString() +
+                     "<script src=\"/__reload.js\"></script>\n" +
                      "<script src=\"/babashell.bundle.js\" data-src=\"/app.babashell\"></script>\n";
         if (html.Contains("<!-- BABASHELL -->", StringComparison.OrdinalIgnoreCase))
         {

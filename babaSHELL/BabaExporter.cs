@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace BabaShell;
@@ -16,13 +17,14 @@ public static class BabaExporter
         var absScript = Path.GetFullPath(scriptPath);
         var baseDir = Path.GetDirectoryName(absScript) ?? Directory.GetCurrentDirectory();
         var rawScript = File.ReadAllText(absScript);
-        var (htmlPath, script) = BabaHtmlDirective.Parse(rawScript, baseDir);
-        var indexPath = htmlPath ?? Path.Combine(baseDir, "index.html");
+        var directives = BabaHtmlDirective.ParseAll(rawScript, baseDir);
+        var script = directives.Script;
+        var indexPath = directives.HtmlPath ?? Path.Combine(baseDir, "index.html");
         var html = File.Exists(indexPath)
             ? File.ReadAllText(indexPath)
             : DefaultHtml(Path.GetFileName(absScript));
 
-        var injected = InjectInline(html, script);
+        var injected = InjectInline(html, script, directives.CssPaths);
 
         var outPath = outputPath;
         if (string.IsNullOrWhiteSpace(outPath))
@@ -40,9 +42,19 @@ public static class BabaExporter
         return 0;
     }
 
-    private static string InjectInline(string html, string script)
+    private static string InjectInline(string html, string script, List<string> cssPaths)
     {
+        var cssBuilder = new System.Text.StringBuilder();
+        foreach (var cssPath in cssPaths)
+        {
+            if (!File.Exists(cssPath)) continue;
+            cssBuilder.AppendLine("<style>");
+            cssBuilder.AppendLine(File.ReadAllText(cssPath));
+            cssBuilder.AppendLine("</style>");
+        }
+
         var inject =
+            cssBuilder.ToString() +
             "<script>\n" + BabaRuntime.BundleJs + "\n</script>\n" +
             "<script type=\"text/babashell\">\n" + script + "\n</script>\n";
 

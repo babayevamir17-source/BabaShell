@@ -93,6 +93,18 @@ public static class BabaRuntime
   }
 
   function transformSet(line) {
+    const attrEq = line.match(/^(\s*)set\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_:-]*)\s*=\s*(.+?)\s*;?\s*$/);
+    if (attrEq) {
+      const indent = attrEq[1] ?? "";
+      const sel = toSelectorExpr(attrEq[2]);
+      const attr = attrEq[3];
+      const val = attrEq[4];
+      if (attr.toLowerCase() === "style") {
+        return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.setAttribute("style", String(${val})); } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
+      }
+      return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.setAttribute("${attr}", String(${val})); } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
+    }
+
     const m = line.match(/^(\s*)set\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s+(.+?)\s*;?\s*$/);
     if (!m) return line;
     const indent = m[1] ?? "";
@@ -104,7 +116,10 @@ public static class BabaRuntime
     if (jsProp) {
       return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.${jsProp} = ${val}; } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
     }
-    return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.setAttribute("${prop}", ${val}); } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
+    if (prop.includes("-")) {
+      return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.style.setProperty("${prop}", String(${val})); } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
+    }
+    return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.setAttribute("${prop}", String(${val})); } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
   }
 
   function transformUi(line) {
@@ -365,6 +380,7 @@ public static class BabaRuntime
 
 """;
 }
+
 
 
 

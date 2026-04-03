@@ -126,6 +126,13 @@ public sealed class Parser
         }
 
         var prop = Consume(TokenType.IDENT, "Expected property name.").Lexeme;
+        // Support kebab-case properties like background-color
+        while (Match(TokenType.MINUS))
+        {
+            var part = Consume(TokenType.IDENT, "Expected property name part after '-'.").Lexeme;
+            prop += "-" + part;
+        }
+        _ = Match(TokenType.EQUAL);
         var value = Expression();
         ConsumeLineEnd();
         return new SetStmt(selector, prop, value);

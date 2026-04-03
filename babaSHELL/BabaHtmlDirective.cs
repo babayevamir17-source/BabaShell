@@ -1,21 +1,36 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace BabaShell;
+
+public sealed class BabaUseDirectives
+{
+    public string? HtmlPath { get; init; }
+    public List<string> CssPaths { get; init; } = new();
+    public string Script { get; init; } = "";
+}
 
 public static class BabaHtmlDirective
 {
     public static (string? htmlPath, string script) Parse(string scriptSource, string baseDir)
     {
+        var all = ParseAll(scriptSource, baseDir);
+        return (all.HtmlPath, all.Script);
+    }
+
+    public static BabaUseDirectives ParseAll(string scriptSource, string baseDir)
+    {
         using var reader = new StringReader(scriptSource);
         string? line;
-        var consumed = false;
         var output = new System.Text.StringBuilder();
         string? htmlPath = null;
+        var cssPaths = new List<string>();
+        var atTop = true;
 
         while ((line = reader.ReadLine()) != null)
         {
-            if (!consumed)
+            if (atTop)
             {
                 var trimmed = line.Trim();
                 if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("//"))
@@ -26,17 +41,32 @@ public static class BabaHtmlDirective
 
                 if (TryParseUseFrom(trimmed, baseDir, out var resolved))
                 {
-                    htmlPath = resolved;
-                    consumed = true;
-                    continue; // drop directive line
+                    if (resolved != null)
+                    {
+                        var ext = Path.GetExtension(resolved).ToLowerInvariant();
+                        if (ext is ".html" or ".htm")
+                        {
+                            htmlPath = resolved;
+                        }
+                        else if (ext == ".css")
+                        {
+                            cssPaths.Add(resolved);
+                        }
+                    }
+                    continue; // drop directive lines
                 }
-                consumed = true;
+                atTop = false;
             }
 
             output.AppendLine(line);
         }
 
-        return (htmlPath, output.ToString());
+        return new BabaUseDirectives
+        {
+            HtmlPath = htmlPath,
+            CssPaths = cssPaths,
+            Script = output.ToString()
+        };
     }
 
     private static bool TryParseUseFrom(string line, string baseDir, out string? resolved)
