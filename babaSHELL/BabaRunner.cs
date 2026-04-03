@@ -182,7 +182,7 @@ public sealed class BabaRunner
         ErrorReporter.SetFileContext(path);
         var baseDir = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
         var (_, stripped) = BabaHtmlDirective.Parse(source, baseDir);
-        source = stripped;
+        source = BabaScriptPreprocessor.StripWebOnlyLines(stripped);
         var lexer = new Lexer(source);
         var tokens = lexer.ScanTokens();
         var parser = new Parser(tokens);

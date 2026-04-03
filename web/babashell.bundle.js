@@ -101,6 +101,43 @@
     return `${indent}{ const __bs_el = document.querySelector(${sel}); if (__bs_el) { __bs_el.setAttribute("${prop}", String(${val})); } else { console.warn("[BabaShell] set target not found:", ${sel}); } }`;
   }
 
+  function cssValueExpr(raw) {
+    const v = (raw || "").trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      return v;
+    }
+    return JSON.stringify(v);
+  }
+
+  function selectorExpr(raw) {
+    const s = (raw || "").trim();
+    if (s.startsWith("#") || s.startsWith(".") || s.startsWith("[") || s.startsWith("*")) {
+      return JSON.stringify(s);
+    }
+    return JSON.stringify(s);
+  }
+
+  function transformCssNamespace(line) {
+    const withSelector = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_-]*)\.([#.]?[A-Za-z_][A-Za-z0-9_-]*)\.([A-Za-z-]+)\s*:\s*(.+?)\s*;?\s*$/);
+    if (withSelector) {
+      const indent = withSelector[1] ?? "";
+      const sel = selectorExpr(withSelector[3]);
+      const prop = withSelector[4];
+      const val = cssValueExpr(withSelector[5]);
+      return `${indent}{ document.querySelectorAll(${sel}).forEach(__bs_el => __bs_el.style.setProperty("${prop}", String(${val}))); }`;
+    }
+
+    const rootRule = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_-]*)\.([A-Za-z-]+)\s*:\s*(.+?)\s*;?\s*$/);
+    if (rootRule) {
+      const indent = rootRule[1] ?? "";
+      const prop = rootRule[3];
+      const val = cssValueExpr(rootRule[4]);
+      return `${indent}{ document.documentElement.style.setProperty("${prop}", String(${val})); }`;
+    }
+
+    return line;
+  }
+
   function transformUi(line) {
     const m = line.match(/^(\s*)ui\.([A-Za-z_][A-Za-z0-9_]*)\s+(.+?)\s*;?\s*$/);
     if (!m) return line;
@@ -245,6 +282,7 @@
       }
 
       let replaced = transformEmit(line);
+      replaced = transformCssNamespace(replaced);
       replaced = transformFunc(replaced);
       replaced = transformIfLine(replaced);
       replaced = transformStore(replaced);
