@@ -82,7 +82,6 @@
     const out = [];
     let depth = 0;
     const whenStack = [];
-    let whenCounter = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -93,10 +92,9 @@
         const indent = whenBlock[1] ?? "";
         const sel = toSelectorExpr(whenBlock[2]);
         const evt = normalizeEventName(whenBlock[3]);
-        const elVar = `__bs_evt_el_${++whenCounter}`;
-        out.push(`${indent}{ const ${elVar} = document.querySelector(${sel}); if (${elVar}) { ${elVar}.addEventListener("${evt}", ()=>{`);
+        out.push(`${indent}babashell.__on(${sel}, "${evt}", ()=>{`);
         depth += 1;
-        whenStack.push({ depth, selectorExpr: sel, elVar });
+        whenStack.push(depth);
         continue;
       }
 
@@ -106,15 +104,14 @@
         const sel = toSelectorExpr(whenSingle[2]);
         const evt = normalizeEventName(whenSingle[3]);
         const rest = transformEmit(whenSingle[4].trim()).trim().replace(/;$/, "");
-        const elVar = `__bs_evt_el_${++whenCounter}`;
-        out.push(`${indent}{ const ${elVar} = document.querySelector(${sel}); if (${elVar}) { ${elVar}.addEventListener("${evt}", ()=>{ ${rest}; }); } else { console.warn("[BabaShell] event target not found:", ${sel}); } }`);
+        out.push(`${indent}babashell.__on(${sel}, "${evt}", ()=>{ ${rest}; });`);
         continue;
       }
 
-      if (trimmed === "}" && whenStack.length > 0 && whenStack[whenStack.length - 1].depth === depth) {
+      if (trimmed === "}" && whenStack.length > 0 && whenStack[whenStack.length - 1] === depth) {
         const indent = line.slice(0, line.indexOf("}"));
-        const state = whenStack.pop();
-        out.push(`${indent}}); } else { console.warn("[BabaShell] event target not found:", ${state.selectorExpr}); } }`);
+        out.push(`${indent}});`);
+        whenStack.pop();
         depth -= 1;
         continue;
       }
@@ -136,6 +133,20 @@
   function $(selector) { return document.querySelector(selector); }
   function $$(selector) { return Array.from(document.querySelectorAll(selector)); }
   function on(selector, event, handler) { const el = $(selector); if (el) el.addEventListener(event, handler); }
+  function __on(selector, event, handler) {
+    const delegatedEvent = event === "mouseenter" ? "mouseover" : event;
+    document.addEventListener(delegatedEvent, (ev) => {
+      const origin = ev.target;
+      if (!(origin instanceof Element)) return;
+      const matched = origin.closest(selector);
+      if (!matched) return;
+      if (event === "mouseenter") {
+        const rel = ev.relatedTarget;
+        if (rel instanceof Element && matched.contains(rel)) return;
+      }
+      handler(ev, matched);
+    });
+  }
   function applySelector(el, sel) {
     if (!sel) return;
     if (sel.startsWith("#")) el.id = sel.slice(1);
@@ -206,7 +217,7 @@
   window.$ = $;
   window.$$ = $$;
   window.on = on;
-  window.babashell = { compile: compileBabaShell, boot, emit, $, $$, on, ui };
+  window.babashell = { compile: compileBabaShell, boot, emit, $, $$, on, __on, ui };
   window.ui = ui;
 
   autoLoadFromScriptTag();
