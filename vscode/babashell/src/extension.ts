@@ -69,6 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
     await doc.save();
 
     const filePath = doc.fileName;
+    const content = doc.getText();
     const config = vscode.workspace.getConfiguration("babashell");
     const configuredExe = (config.get<string>("executablePath") || "").trim();
     let exePath = configuredExe || "babashell";
@@ -84,7 +85,14 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const terminal = vscode.window.createTerminal({ name: "BabaShell" });
     terminal.show(true);
-    terminal.sendText(`& "${exePath}" "${filePath}"`);
+    const hasUseFrom = /^\s*use\s+from\s+/im.test(content);
+    if (hasUseFrom) {
+      const port = 3000;
+      terminal.sendText(`& "${exePath}" serve "${filePath}" ${port}`);
+      vscode.env.openExternal(vscode.Uri.parse(`http://localhost:${port}/`));
+    } else {
+      terminal.sendText(`& "${exePath}" "${filePath}"`);
+    }
   });
 
   const runCheck = (doc: vscode.TextDocument) => {
