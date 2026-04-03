@@ -2,7 +2,7 @@
   "name": "babashell",
   "displayName": "BabaShell",
   "description": "BabaShell language support: syntax highlighting, autocomplete, and run command",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "babashell",
   "engines": {
     "vscode": "^1.85.0"
@@ -142,6 +142,15 @@
     "onDebug"
   ],
   "main": "./out/extension.js",
+  "files": [
+    "language-configuration.json",
+    "syntaxes/**",
+    "snippets/**",
+    "themes/**",
+    "out/**",
+    "media/**",
+    "package.json"
+  ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./"

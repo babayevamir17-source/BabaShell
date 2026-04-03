@@ -41,5 +41,26 @@
       "when #${1:id} clicked emit \"${2:text}\""
     ],
     "description": "When element clicked"
+  },
+  "useFrom": {
+    "prefix": "use from",
+    "body": [
+      "use from ./${1:index.html}"
+    ],
+    "description": "Bind HTML file"
+  },
+  "setText": {
+    "prefix": "set text",
+    "body": [
+      "set #${1:id} text \"${2:text}\""
+    ],
+    "description": "Set text of element"
+  },
+  "uiButton": {
+    "prefix": "ui button",
+    "body": [
+      "ui.button \"#${1:id}\" \"${2:text}\""
+    ],
+    "description": "Create button"
   }
 }
