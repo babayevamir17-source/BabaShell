@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,120 +24,159 @@ public static class BabaServer
         var absPath = Path.GetFullPath(scriptPath);
         var baseDir = Path.GetDirectoryName(absPath) ?? Directory.GetCurrentDirectory();
         var version = 1;
+
         using var watcher = new FileSystemWatcher(baseDir, Path.GetFileName(absPath));
         using var htmlWatcher = new FileSystemWatcher(baseDir, "*.html");
+        using var cssWatcher = new FileSystemWatcher(baseDir, "*.css");
+
         watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
         watcher.Changed += (_, __) => Interlocked.Increment(ref version);
         watcher.Renamed += (_, __) => Interlocked.Increment(ref version);
         watcher.EnableRaisingEvents = true;
+
         htmlWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
         htmlWatcher.Changed += (_, __) => Interlocked.Increment(ref version);
         htmlWatcher.Renamed += (_, __) => Interlocked.Increment(ref version);
         htmlWatcher.EnableRaisingEvents = true;
 
-        var listener = new HttpListener();
+        cssWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
+        cssWatcher.Changed += (_, __) => Interlocked.Increment(ref version);
+        cssWatcher.Renamed += (_, __) => Interlocked.Increment(ref version);
+        cssWatcher.EnableRaisingEvents = true;
+
+        TcpListener? listener = null;
         var port = portOverride ?? DefaultPort;
-        while (true)
+        while (listener == null && port <= DefaultPort + 50)
         {
-            var prefix = $"http://localhost:{port}/";
             try
             {
-                listener.Prefixes.Clear();
-                listener.Prefixes.Add(prefix);
-                listener.Start();
-                break;
+                var candidate = new TcpListener(IPAddress.Loopback, port);
+                candidate.Start();
+                listener = candidate;
             }
             catch
             {
                 port++;
-                if (port > DefaultPort + 50)
-                {
-                    ErrorReporter.Runtime("Unable to start server on localhost.");
-                    return 1;
-                }
             }
         }
 
-        Console.WriteLine($"BabaShell dev server running:");
+        if (listener == null)
+        {
+            ErrorReporter.Runtime("Unable to start server on localhost.");
+            return 1;
+        }
+
+        Console.WriteLine("BabaShell dev server running:");
         Console.WriteLine($"  http://localhost:{port}/");
         Console.WriteLine($"  watching: {absPath}");
         Console.WriteLine("Press Ctrl+C to stop.");
 
-        while (listener.IsListening)
-        {
-            var ctx = listener.GetContext();
-            _ = Task.Run(() => Handle(ctx, absPath, baseDir, port, () => Volatile.Read(ref version)));
-        }
-
-        return 0;
-    }
-
-    private static void Handle(HttpListenerContext ctx, string scriptPath, string baseDir, int port, Func<int> getVersion)
-    {
         try
         {
-            var path = ctx.Request.Url?.AbsolutePath ?? "/";
-            if (path == "/")
+            while (true)
             {
-                var scriptSource = File.ReadAllText(scriptPath);
-                var directives = BabaHtmlDirective.ParseAll(scriptSource, baseDir);
-                var indexPath = directives.HtmlPath ?? Path.Combine(baseDir, "index.html");
-                var html = File.Exists(indexPath) ? File.ReadAllText(indexPath) : HtmlPage(scriptPath);
-                WriteText(ctx, InjectRuntime(html, directives.CssPaths, baseDir), "text/html");
-                return;
+                var client = listener.AcceptTcpClient();
+                _ = Task.Run(() => HandleClient(client, absPath, baseDir, () => Volatile.Read(ref version)));
             }
-            if (path == "/app.babashell")
-            {
-                var scriptSource = File.ReadAllText(scriptPath);
-                var stripped = BabaHtmlDirective.ParseAll(scriptSource, baseDir).Script;
-                WriteText(ctx, stripped, "text/plain");
-                return;
-            }
-            if (path == "/babashell.bundle.js")
-            {
-                WriteText(ctx, BundleJs, "application/javascript");
-                return;
-            }
-            if (path == "/__version")
-            {
-                WriteText(ctx, getVersion().ToString(), "text/plain");
-                return;
-            }
-            if (path == "/__reload.js")
-            {
-                WriteText(ctx, ReloadJs, "application/javascript");
-                return;
-            }
-
-            if (TryServeStatic(ctx, baseDir, path))
-            {
-                return;
-            }
-
-            ctx.Response.StatusCode = 404;
-            WriteText(ctx, "Not found", "text/plain");
         }
-        catch (Exception ex)
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static void HandleClient(TcpClient client, string scriptPath, string baseDir, Func<int> getVersion)
+    {
+        using (client)
+        using (var stream = client.GetStream())
+        using (var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true))
         {
             try
             {
-                ctx.Response.StatusCode = 500;
-                WriteText(ctx, "Server error: " + ex.Message, "text/plain");
+                var requestLine = reader.ReadLine();
+                if (string.IsNullOrWhiteSpace(requestLine)) return;
+
+                var parts = requestLine.Split(' ');
+                if (parts.Length < 2) return;
+
+                // read and ignore headers
+                string? header;
+                do { header = reader.ReadLine(); } while (!string.IsNullOrEmpty(header));
+
+                var path = parts[1];
+                var q = path.IndexOf('?');
+                if (q >= 0) path = path[..q];
+
+                if (path == "/")
+                {
+                    var scriptSource = File.ReadAllText(scriptPath);
+                    var directives = BabaHtmlDirective.ParseAll(scriptSource, baseDir);
+                    var indexPath = directives.HtmlPath ?? Path.Combine(baseDir, "index.html");
+                    var html = File.Exists(indexPath) ? File.ReadAllText(indexPath) : HtmlPage(scriptPath);
+                    var body = InjectRuntime(html, directives.CssPaths, baseDir);
+                    WriteResponse(stream, 200, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(body));
+                    return;
+                }
+
+                if (path == "/app.babashell")
+                {
+                    var scriptSource = File.ReadAllText(scriptPath);
+                    var stripped = BabaHtmlDirective.ParseAll(scriptSource, baseDir).Script;
+                    WriteResponse(stream, 200, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes(stripped));
+                    return;
+                }
+
+                if (path == "/babashell.bundle.js")
+                {
+                    WriteResponse(stream, 200, "application/javascript; charset=utf-8", Encoding.UTF8.GetBytes(BundleJs));
+                    return;
+                }
+
+                if (path == "/__version")
+                {
+                    WriteResponse(stream, 200, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes(getVersion().ToString()));
+                    return;
+                }
+
+                if (path == "/__reload.js")
+                {
+                    WriteResponse(stream, 200, "application/javascript; charset=utf-8", Encoding.UTF8.GetBytes(ReloadJs));
+                    return;
+                }
+
+                if (TryServeStatic(stream, baseDir, path))
+                {
+                    return;
+                }
+
+                WriteResponse(stream, 404, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes("Not found"));
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                WriteResponse(stream, 500, "text/plain; charset=utf-8", Encoding.UTF8.GetBytes("Server error: " + ex.Message));
             }
         }
     }
 
-    private static void WriteText(HttpListenerContext ctx, string text, string contentType = "text/html")
+    private static void WriteResponse(Stream stream, int statusCode, string contentType, byte[] body)
     {
-        var bytes = Encoding.UTF8.GetBytes(text);
-        ctx.Response.ContentType = contentType + "; charset=utf-8";
-        ctx.Response.ContentLength64 = bytes.Length;
-        ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
-        ctx.Response.OutputStream.Close();
+        var reason = statusCode switch
+        {
+            200 => "OK",
+            404 => "Not Found",
+            500 => "Internal Server Error",
+            _ => "OK"
+        };
+
+        var headers =
+            $"HTTP/1.1 {statusCode} {reason}\r\n" +
+            $"Content-Type: {contentType}\r\n" +
+            $"Content-Length: {body.Length}\r\n" +
+            "Connection: close\r\n" +
+            "\r\n";
+        var headerBytes = Encoding.UTF8.GetBytes(headers);
+        stream.Write(headerBytes, 0, headerBytes.Length);
+        stream.Write(body, 0, body.Length);
     }
 
     private static string HtmlPage(string scriptPath)
@@ -167,9 +207,10 @@ public static class BabaServer
             cssInject.AppendLine($"<link rel=\"stylesheet\" href=\"/{rel}\">");
         }
 
-        var inject = cssInject.ToString() +
+        var inject = cssInject +
                      "<script src=\"/__reload.js\"></script>\n" +
                      "<script src=\"/babashell.bundle.js\" data-src=\"/app.babashell\"></script>\n";
+
         if (html.Contains("<!-- BABASHELL -->", StringComparison.OrdinalIgnoreCase))
         {
             return html.Replace("<!-- BABASHELL -->", inject, StringComparison.OrdinalIgnoreCase);
@@ -182,7 +223,7 @@ public static class BabaServer
         return html + "\n" + inject;
     }
 
-    private static bool TryServeStatic(HttpListenerContext ctx, string baseDir, string urlPath)
+    private static bool TryServeStatic(Stream stream, string baseDir, string urlPath)
     {
         var rel = Uri.UnescapeDataString(urlPath.TrimStart('/'));
         if (string.IsNullOrWhiteSpace(rel)) return false;
@@ -194,24 +235,23 @@ public static class BabaServer
         var ext = Path.GetExtension(full).ToLowerInvariant();
         var contentType = ext switch
         {
-            ".html" => "text/html",
-            ".css" => "text/css",
-            ".js" => "application/javascript",
+            ".html" => "text/html; charset=utf-8",
+            ".css" => "text/css; charset=utf-8",
+            ".js" => "application/javascript; charset=utf-8",
             ".png" => "image/png",
             ".jpg" or ".jpeg" => "image/jpeg",
             ".svg" => "image/svg+xml",
             ".gif" => "image/gif",
+            ".webp" => "image/webp",
             _ => "application/octet-stream"
         };
 
         var bytes = File.ReadAllBytes(full);
-        ctx.Response.ContentType = contentType;
-        ctx.Response.ContentLength64 = bytes.Length;
-        ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
-        ctx.Response.OutputStream.Close();
+        WriteResponse(stream, 200, contentType, bytes);
         return true;
     }
 
     private const string ReloadJs = BabaRuntime.ReloadJs;
     private const string BundleJs = BabaRuntime.BundleJs;
 }
+
