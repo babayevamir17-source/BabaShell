@@ -17,6 +17,11 @@ public sealed class BabaRunner
             {
                 return BabaUpdater.RunAsync().GetAwaiter().GetResult();
             }
+            if (args.Length > 0 && (args[0] == "--version" || args[0] == "-v"))
+            {
+                Console.WriteLine($"BabaShell {BabaUpdater.CurrentVersion}");
+                return 0;
+            }
             if (args.Length > 0 && (args[0] == "serve" || args[0] == "dev"))
             {
                 if (args.Length < 2)
@@ -228,6 +233,9 @@ public sealed class BabaRunner
         Console.WriteLine();
         Console.WriteLine("Web:");
         Console.WriteLine("  use from ./page.html   // at top of .babashell to bind custom HTML");
+        Console.WriteLine();
+        Console.WriteLine("Version:");
+        Console.WriteLine("  babashell --version");
         Console.WriteLine();
         Console.WriteLine("Keywords:");
         Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");

@@ -27,6 +27,9 @@ public sealed class Interpreter
     public void ExecuteSource(string virtualPath, string source)
     {
         _currentFile = virtualPath;
+        var baseDir = Path.GetDirectoryName(_currentFile) ?? Directory.GetCurrentDirectory();
+        var (_, stripped) = BabaHtmlDirective.Parse(source, baseDir);
+        source = stripped;
         var lexer = new Lexer(source);
         var tokens = lexer.ScanTokens();
         var parser = new Parser(tokens);
