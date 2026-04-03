@@ -77,29 +77,125 @@
     return `${indent}ui.${fn}(${args});`;
   }
 
+  function transformStore(line) {
+    const m = line.match(/^(\s*)store\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*;?\s*$/);
+    if (!m) return line;
+    return `${m[1]}let ${m[2]} = ${m[3]};`;
+  }
+
+  function transformAdjust(line) {
+    const inc = line.match(/^(\s*)increase\s+([A-Za-z_][A-Za-z0-9_]*)\s+by\s+(.+?)\s*;?\s*$/);
+    if (inc) return `${inc[1]}${inc[2]} = (${inc[2]}) + (${inc[3]});`;
+    const dec = line.match(/^(\s*)decrease\s+([A-Za-z_][A-Za-z0-9_]*)\s+by\s+(.+?)\s*;?\s*$/);
+    if (dec) return `${dec[1]}${dec[2]} = (${dec[2]}) - (${dec[3]});`;
+    return line;
+  }
+
+  function transformCall(line) {
+    const m = line.match(/^(\s*)call\s+(.+?)\s*;?\s*$/);
+    if (!m) return line;
+    return `${m[1]}${m[2]};`;
+  }
+
+  function transformFunc(line) {
+    const m = line.match(/^(\s*)func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*\{\s*$/);
+    if (!m) return line;
+    return `${m[1]}function ${m[2]}(${m[3]}) {`;
+  }
+
+  function transformIfLine(line) {
+    const m = line.match(/^(\s*)if\s+(.+?)\s*\{\s*$/);
+    if (!m) return line;
+    return `${m[1]}if (${m[2]}) {`;
+  }
+
+  function toDurationMsExpr(raw) {
+    const s = raw.trim();
+    const m = s.match(/^(\d+(?:\.\d+)?)\s*([A-Za-z]+)?$/);
+    if (!m) return `(${s})`;
+    const num = Number(m[1]);
+    const unit = (m[2] || "ms").toLowerCase();
+    if (unit === "s" || unit === "sec" || unit === "secs" || unit === "second" || unit === "seconds") return String(Math.round(num * 1000));
+    if (unit === "m" || unit === "min" || unit === "mins" || unit === "minute" || unit === "minutes") return String(Math.round(num * 60000));
+    return String(Math.round(num));
+  }
+
   function compileBabaShell(source) {
     const lines = source.replace(/\r\n/g, "\n").split("\n");
     const out = [];
     let depth = 0;
-    const whenStack = [];
+    const blockStack = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
 
       const whenBlock = line.match(/^(\s*)when\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s*\{\s*$/);
-      if (whenBlock) {
+      if (whenBlock && /^[#.\["']/.test(whenBlock[2].trim())) {
         const indent = whenBlock[1] ?? "";
         const sel = toSelectorExpr(whenBlock[2]);
         const evt = normalizeEventName(whenBlock[3]);
         out.push(`${indent}babashell.__on(${sel}, "${evt}", ()=>{`);
         depth += 1;
-        whenStack.push(depth);
+        blockStack.push({ depth, close: `${indent}});` });
+        continue;
+      }
+
+      const whenCondBlock = line.match(/^(\s*)when\s+(.+?)\s*\{\s*$/);
+      if (whenCondBlock) {
+        const indent = whenCondBlock[1] ?? "";
+        out.push(`${indent}if (${whenCondBlock[2]}) {`);
+        depth += 1;
+        blockStack.push({ depth, close: `${indent}}` });
+        continue;
+      }
+
+      const repeatBlock = line.match(/^(\s*)repeat\s+(.+?)\s+times\s*\{\s*$/);
+      if (repeatBlock) {
+        const indent = repeatBlock[1] ?? "";
+        const countExpr = repeatBlock[2];
+        const idx = `__bs_i_${i}`;
+        out.push(`${indent}for (let ${idx} = 0; ${idx} < (${countExpr}); ${idx}++) {`);
+        depth += 1;
+        blockStack.push({ depth, close: `${indent}}` });
+        continue;
+      }
+
+      const forInBlock = line.match(/^(\s*)for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+?)\s*\{\s*$/);
+      if (forInBlock) {
+        const indent = forInBlock[1] ?? "";
+        out.push(`${indent}for (const ${forInBlock[2]} of (${forInBlock[3]})) {`);
+        depth += 1;
+        blockStack.push({ depth, close: `${indent}}` });
+        continue;
+      }
+
+      const waitBlock = line.match(/^(\s*)wait\s+(.+?)\s*\{\s*$/);
+      if (waitBlock) {
+        const indent = waitBlock[1] ?? "";
+        const msExpr = toDurationMsExpr(waitBlock[2]);
+        out.push(`${indent}setTimeout(()=>{`);
+        depth += 1;
+        blockStack.push({ depth, close: `${indent}}, ${msExpr});` });
+        continue;
+      }
+
+      const fetchBlock = line.match(/^(\s*)fetch\s+(.+?)\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{\s*$/);
+      if (fetchBlock) {
+        const indent = fetchBlock[1] ?? "";
+        const urlExpr = fetchBlock[2];
+        const target = fetchBlock[3];
+        out.push(`${indent}fetch(${urlExpr}).then(async (__bs_res)=>{`);
+        out.push(`${indent}  let ${target};`);
+        out.push(`${indent}  const __bs_txt = await __bs_res.text();`);
+        out.push(`${indent}  try { ${target} = JSON.parse(__bs_txt); } catch { ${target} = __bs_txt; }`);
+        depth += 1;
+        blockStack.push({ depth, close: `${indent}}).catch((err)=>console.error("[BabaShell] fetch error:", err));` });
         continue;
       }
 
       const whenSingle = line.match(/^(\s*)when\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s+(.+?)\s*$/);
-      if (whenSingle) {
+      if (whenSingle && /^[#.\["']/.test(whenSingle[2].trim())) {
         const indent = whenSingle[1] ?? "";
         const sel = toSelectorExpr(whenSingle[2]);
         const evt = normalizeEventName(whenSingle[3]);
@@ -108,15 +204,19 @@
         continue;
       }
 
-      if (trimmed === "}" && whenStack.length > 0 && whenStack[whenStack.length - 1] === depth) {
-        const indent = line.slice(0, line.indexOf("}"));
-        out.push(`${indent}});`);
-        whenStack.pop();
+      if (trimmed === "}" && blockStack.length > 0 && blockStack[blockStack.length - 1].depth === depth) {
+        const state = blockStack.pop();
+        out.push(state.close);
         depth -= 1;
         continue;
       }
 
       let replaced = transformEmit(line);
+      replaced = transformFunc(replaced);
+      replaced = transformIfLine(replaced);
+      replaced = transformStore(replaced);
+      replaced = transformAdjust(replaced);
+      replaced = transformCall(replaced);
       replaced = transformSet(replaced);
       replaced = transformUi(replaced);
       out.push(replaced);

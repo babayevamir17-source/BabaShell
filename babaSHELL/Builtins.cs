@@ -12,19 +12,50 @@ public static class Builtins
         env.Define("help", new BuiltinFunction(0, _ =>
         {
             Console.WriteLine("BabaShell");
-            Console.WriteLine("Usage: babashell [file.babashell]");
+            Console.WriteLine("Usage: babashell run file.babashell");
             Console.WriteLine();
             Console.WriteLine("Keywords:");
-            Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");
+            Console.WriteLine("  store, increase, decrease, by, if, when, else, repeat, times, for, in");
+            Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
             Console.WriteLine();
             Console.WriteLine("Builtins:");
-            Console.WriteLine("  help");
+            Console.WriteLine("  help, print, random, length");
             Console.WriteLine("  red, green, yellow, blue");
             Console.WriteLine("  read, size, lower, upper, trim, contains, split, join, slice");
             Console.WriteLine("  file_read, file_write, file_append, file_exists, file_delete, file_copy, file_move");
             Console.WriteLine("  dir_exists, dir_make, dir_delete, dir_list");
             Console.WriteLine("  now, unix_time, format_time");
             return null;
+        }));
+
+        env.Define("print", new BuiltinFunction(-1, args =>
+        {
+            var parts = new List<string>();
+            foreach (var item in args) parts.Add(item?.ToString() ?? "null");
+            Console.WriteLine(string.Join(" ", parts));
+            return null;
+        }));
+
+        env.Define("random", new BuiltinFunction(-1, args =>
+        {
+            var rnd = Random.Shared.NextDouble();
+            if (args.Count == 0) return rnd;
+            if (args.Count == 1)
+            {
+                var max = ToNumber(args[0]);
+                return rnd * max;
+            }
+            var min = ToNumber(args[0]);
+            var max2 = ToNumber(args[1]);
+            return min + (rnd * (max2 - min));
+        }));
+
+        env.Define("length", new BuiltinFunction(1, args =>
+        {
+            if (args[0] is string s) return (double)s.Length;
+            if (args[0] is List<object?> list) return (double)list.Count;
+            if (args[0] is Dictionary<string, object?> dict) return (double)dict.Count;
+            return 0.0;
         }));
 
         env.Define("read", new BuiltinFunction(1, args =>

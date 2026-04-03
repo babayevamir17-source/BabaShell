@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace BabaShell;
 
@@ -9,11 +10,19 @@ public sealed class BabaError : Exception
 
 public static class ErrorReporter
 {
+    private static readonly AsyncLocal<string?> FileContext = new();
+
+    public static void SetFileContext(string? filePath)
+    {
+        FileContext.Value = filePath;
+    }
+
     public static void Syntax(string message, int line, int column)
     {
         WithColor(ConsoleColor.Red, () =>
         {
-            Console.WriteLine($"Syntax error ({line}:{column}): {message}");
+            var file = FileContext.Value ?? "<input>";
+            Console.WriteLine($"[Error] {file}:{line}:{column} {message}");
         });
         throw new BabaError(message);
     }
@@ -22,7 +31,8 @@ public static class ErrorReporter
     {
         WithColor(ConsoleColor.Red, () =>
         {
-            Console.WriteLine($"Runtime error: {message}");
+            var file = FileContext.Value ?? "<runtime>";
+            Console.WriteLine($"[Error] {file} {message}");
         });
         throw new BabaError(message);
     }
@@ -31,7 +41,8 @@ public static class ErrorReporter
     {
         WithColor(ConsoleColor.Yellow, () =>
         {
-            Console.WriteLine($"Warning: {message}");
+            var file = FileContext.Value ?? "<runtime>";
+            Console.WriteLine($"[Warning] {file} {message}");
         });
     }
 

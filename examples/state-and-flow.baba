@@ -1,0 +1,23 @@
+store name = "Amir"
+store score = 0
+increase score by 3
+decrease score by 1
+
+func greet(who) {
+    return "Hello, " + who
+}
+
+if score > 1 {
+    emit greet(name)
+} else {
+    emit "Score too low"
+}
+
+repeat 2 times {
+    emit "tick"
+}
+
+for item in [1, 2, 3] {
+    emit item
+}
+

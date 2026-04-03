@@ -27,19 +27,37 @@ public sealed class Parser
     private Stmt Declaration()
     {
         if (Match(TokenType.FUNC)) return FunctionDeclaration();
+        if (Match(TokenType.STORE)) return StoreDeclaration();
         return Statement();
     }
 
     private Stmt Statement()
     {
         if (Match(TokenType.EMIT)) return PrintStatement();
+        if (Match(TokenType.IF)) return IfStatement();
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.SET)) return SetStatement();
+        if (Match(TokenType.INCREASE)) return AdjustStatement(isIncrease: true);
+        if (Match(TokenType.DECREASE)) return AdjustStatement(isIncrease: false);
+        if (Match(TokenType.REPEAT)) return RepeatStatement();
+        if (Match(TokenType.FOR)) return ForEachStatement();
         if (Match(TokenType.LOOP)) return ForStatement();
+        if (Match(TokenType.WAIT)) return WaitStatement();
+        if (Match(TokenType.FETCH)) return FetchStatement();
+        if (Match(TokenType.CALL)) return CallStatement();
         if (Match(TokenType.RETURN)) return ReturnStatement();
         if (Match(TokenType.IMPORT)) return ImportStatement();
         if (Match(TokenType.LBRACE)) return new BlockStmt(Block());
         return ExpressionStatement();
+    }
+
+    private Stmt StoreDeclaration()
+    {
+        var name = Consume(TokenType.IDENT, "Expected variable name after 'store'.").Lexeme;
+        Consume(TokenType.EQUAL, "Expected '=' in store declaration.");
+        var init = Expression();
+        ConsumeLineEnd();
+        return new VarDeclStmt(name, init);
     }
 
     private Stmt PrintStatement()
@@ -55,15 +73,35 @@ public sealed class Parser
 
     private Stmt WhenStatement()
     {
-        if ((Check(TokenType.SELECTOR) || Check(TokenType.STRING)) && CheckNext(TokenType.CLICKED))
+        if (Check(TokenType.SELECTOR) || Check(TokenType.STRING))
         {
             var selectorToken = Advance();
-            Advance(); // clicked
+            string? eventName = null;
+            if (Match(TokenType.CLICKED))
+            {
+                eventName = "clicked";
+            }
+            else if (Match(TokenType.HOVER))
+            {
+                eventName = "hover";
+            }
+            else if (Check(TokenType.IDENT))
+            {
+                eventName = Advance().Lexeme;
+            }
+
+            if (eventName == null)
+            {
+                _current--;
+            }
+            else
+            {
             var selector = selectorToken.Type == TokenType.STRING
                 ? (string)selectorToken.Literal!
                 : selectorToken.Lexeme;
             var body = Statement();
-            return new WhenEventStmt(selector, "clicked", body);
+                return new WhenEventStmt(selector, eventName, body);
+            }
         }
 
         return IfStatement();
@@ -103,6 +141,82 @@ public sealed class Parser
             elseBranch = Statement();
         }
         return new IfStmt(condition, thenBranch, elseBranch);
+    }
+
+    private Stmt AdjustStatement(bool isIncrease)
+    {
+        var name = Consume(TokenType.IDENT, $"Expected variable name after '{(isIncrease ? "increase" : "decrease")}'.").Lexeme;
+        Consume(TokenType.BY, "Expected 'by'.");
+        var amount = Expression();
+        ConsumeLineEnd();
+        return new AdjustStmt(name, isIncrease, amount);
+    }
+
+    private Stmt RepeatStatement()
+    {
+        var countExpr = Expression();
+        Consume(TokenType.TIMES, "Expected 'times' after repeat count.");
+        var body = Statement();
+        return new RepeatStmt(countExpr, body);
+    }
+
+    private Stmt ForEachStatement()
+    {
+        var name = Consume(TokenType.IDENT, "Expected loop variable name after 'for'.").Lexeme;
+        Consume(TokenType.IN, "Expected 'in'.");
+        var collection = Expression();
+        var body = Statement();
+        return new ForEachStmt(name, collection, body);
+    }
+
+    private Stmt WaitStatement()
+    {
+        var durationMs = ParseDurationMs();
+        var body = Statement();
+        return new WaitStmt(durationMs, body);
+    }
+
+    private int ParseDurationMs()
+    {
+        var numberToken = Consume(TokenType.NUMBER, "Expected duration number after 'wait'.");
+        var value = numberToken.Literal is double d ? d : 0;
+        var unit = "ms";
+        if (Check(TokenType.IDENT))
+        {
+            unit = Advance().Lexeme.ToLowerInvariant();
+        }
+
+        var ms = unit switch
+        {
+            "ms" => value,
+            "s" or "sec" or "secs" or "second" or "seconds" => value * 1000,
+            "m" or "min" or "mins" or "minute" or "minutes" => value * 60_000,
+            _ => value
+        };
+
+        if (ms < 0) ms = 0;
+        return (int)Math.Round(ms);
+    }
+
+    private Stmt FetchStatement()
+    {
+        var urlExpr = Expression();
+        Consume(TokenType.AS, "Expected 'as' in fetch statement.");
+        var target = Consume(TokenType.IDENT, "Expected variable name after 'as'.").Lexeme;
+        var body = Statement();
+        return new FetchStmt(urlExpr, target, body);
+    }
+
+    private Stmt CallStatement()
+    {
+        var callee = Expression();
+        if (callee is not CallExpr)
+        {
+            var t = Previous();
+            ErrorReporter.Syntax("Expected function call after 'call'.", t.Line, t.Column);
+        }
+        ConsumeLineEnd();
+        return new ExprStmt(callee);
     }
 
     private Stmt ForStatement()

@@ -26,11 +26,37 @@ public sealed class IfStmt(Expr Condition, Stmt ThenBranch, Stmt? ElseBranch) : 
     public Stmt? ElseBranch { get; } = ElseBranch;
 }
 
+public sealed class VarDeclStmt(string Name, Expr Initializer) : Stmt
+{
+    public string Name { get; } = Name;
+    public Expr Initializer { get; } = Initializer;
+}
+
+public sealed class AdjustStmt(string Name, bool IsIncrease, Expr Amount) : Stmt
+{
+    public string Name { get; } = Name;
+    public bool IsIncrease { get; } = IsIncrease;
+    public Expr Amount { get; } = Amount;
+}
+
 public sealed class ForStmt(string Name, Expr Start, Expr End, Stmt Body) : Stmt
 {
     public string Name { get; } = Name;
     public Expr Start { get; } = Start;
     public Expr End { get; } = End;
+    public Stmt Body { get; } = Body;
+}
+
+public sealed class RepeatStmt(Expr Count, Stmt Body) : Stmt
+{
+    public Expr Count { get; } = Count;
+    public Stmt Body { get; } = Body;
+}
+
+public sealed class ForEachStmt(string Name, Expr Collection, Stmt Body) : Stmt
+{
+    public string Name { get; } = Name;
+    public Expr Collection { get; } = Collection;
     public Stmt Body { get; } = Body;
 }
 
@@ -63,6 +89,19 @@ public sealed class SetStmt(string Selector, string Property, Expr Value) : Stmt
     public string Selector { get; } = Selector;
     public string Property { get; } = Property;
     public Expr Value { get; } = Value;
+}
+
+public sealed class WaitStmt(int DurationMs, Stmt Body) : Stmt
+{
+    public int DurationMs { get; } = DurationMs;
+    public Stmt Body { get; } = Body;
+}
+
+public sealed class FetchStmt(Expr Url, string TargetName, Stmt Body) : Stmt
+{
+    public Expr Url { get; } = Url;
+    public string TargetName { get; } = TargetName;
+    public Stmt Body { get; } = Body;
 }
 
 public abstract class Expr { }

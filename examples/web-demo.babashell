@@ -1,0 +1,21 @@
+use from {./web-demo.html}
+
+store clicks = 0
+set #out text "Ready"
+
+when #btn clicked {
+    increase clicks by 1
+    set #out text ("Clicked " + clicks)
+}
+
+when #box hover {
+    set #box class "hovered"
+    wait 400ms {
+        set #box class ""
+    }
+}
+
+fetch "https://jsonplaceholder.typicode.com/todos/1" as data {
+    set #todo text data.title
+}
+

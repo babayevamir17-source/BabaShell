@@ -2,11 +2,15 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading;
 
 namespace BabaShell;
 
 public sealed class Interpreter
 {
+    private static readonly HttpClient Http = new();
     private readonly BabaEnvironment _globals = new();
     private BabaEnvironment _environment;
     private readonly HashSet<string> _imported = new(StringComparer.OrdinalIgnoreCase);
@@ -26,6 +30,7 @@ public sealed class Interpreter
 
     public void ExecuteSource(string virtualPath, string source)
     {
+        ErrorReporter.SetFileContext(virtualPath);
         _currentFile = virtualPath;
         var baseDir = Path.GetDirectoryName(_currentFile) ?? Directory.GetCurrentDirectory();
         var (_, stripped) = BabaHtmlDirective.Parse(source, baseDir);
@@ -39,6 +44,7 @@ public sealed class Interpreter
 
     private Dictionary<string, object?> ExecuteModule(string path, string source)
     {
+        ErrorReporter.SetFileContext(path);
         _currentFile = path;
         var lexer = new Lexer(source);
         var tokens = lexer.ScanTokens();
@@ -54,6 +60,7 @@ public sealed class Interpreter
     {
         foreach (var stmt in statements)
         {
+            ErrorReporter.SetFileContext(_currentFile);
             Execute(stmt);
         }
     }
@@ -94,11 +101,30 @@ public sealed class Interpreter
                 if (IsTruthy(Evaluate(i.Condition))) Execute(i.ThenBranch);
                 else if (i.ElseBranch != null) Execute(i.ElseBranch);
                 break;
+            case VarDeclStmt v:
+                _environment.Define(v.Name, Evaluate(v.Initializer));
+                break;
+            case AdjustStmt a:
+                ExecuteAdjust(a);
+                break;
+            case RepeatStmt r:
+                ExecuteRepeat(r);
+                break;
+            case ForEachStmt fe:
+                ExecuteForEach(fe);
+                break;
             case ForStmt f:
                 ExecuteFor(f);
                 break;
             case FuncStmt fn:
                 _environment.Define(fn.Name, new BabaFunction(fn, _environment));
+                break;
+            case WaitStmt w:
+                Thread.Sleep(w.DurationMs);
+                Execute(w.Body);
+                break;
+            case FetchStmt fetch:
+                ExecuteFetch(fetch);
                 break;
             case ReturnStmt r:
                 throw new ReturnSignal(r.Value == null ? null : Evaluate(r.Value));
@@ -115,6 +141,76 @@ public sealed class Interpreter
                 ErrorReporter.Runtime("Unknown statement.");
                 break;
         }
+    }
+
+    private void ExecuteAdjust(AdjustStmt stmt)
+    {
+        var current = ToNumber(_environment.Get(stmt.Name), $"Variable '{stmt.Name}' must be numeric.");
+        var amount = ToNumber(Evaluate(stmt.Amount), "Adjustment amount must be numeric.");
+        var next = stmt.IsIncrease ? current + amount : current - amount;
+        _environment.Assign(stmt.Name, next);
+    }
+
+    private void ExecuteRepeat(RepeatStmt stmt)
+    {
+        var count = (int)Math.Round(ToNumber(Evaluate(stmt.Count), "Repeat count must be numeric."));
+        if (count < 0) count = 0;
+        for (var i = 0; i < count; i++)
+        {
+            Execute(stmt.Body);
+        }
+    }
+
+    private void ExecuteForEach(ForEachStmt stmt)
+    {
+        var source = Evaluate(stmt.Collection);
+        if (source is List<object?> list)
+        {
+            foreach (var item in list)
+            {
+                _environment.Assign(stmt.Name, item);
+                Execute(stmt.Body);
+            }
+            return;
+        }
+
+        if (source is Dictionary<string, object?> dict)
+        {
+            foreach (var value in dict.Values)
+            {
+                _environment.Assign(stmt.Name, value);
+                Execute(stmt.Body);
+            }
+            return;
+        }
+
+        ErrorReporter.Runtime("for ... in only supports arrays and maps.");
+    }
+
+    private void ExecuteFetch(FetchStmt fetch)
+    {
+        var url = Evaluate(fetch.Url)?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            ErrorReporter.Runtime("fetch url cannot be empty.");
+            return;
+        }
+
+        var content = Http.GetStringAsync(url).GetAwaiter().GetResult();
+        object? parsed = content;
+        try
+        {
+            using var doc = JsonDocument.Parse(content);
+            parsed = JsonToObject(doc.RootElement);
+        }
+        catch
+        {
+            // keep raw text when response is not JSON
+        }
+
+        var scope = new BabaEnvironment(_environment);
+        scope.Define(fetch.TargetName, parsed);
+        ExecuteBlock(new List<Stmt> { fetch.Body }, scope);
     }
 
     private void ExecuteFor(ForStmt f)
@@ -407,5 +503,40 @@ public sealed class Interpreter
             return "{" + string.Join(", ", parts) + "}";
         }
         return value.ToString() ?? "";
+    }
+
+    private static object? JsonToObject(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => JsonObjectToDictionary(element),
+            JsonValueKind.Array => JsonArrayToList(element),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var i) ? (double)i : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => element.ToString()
+        };
+    }
+
+    private static Dictionary<string, object?> JsonObjectToDictionary(JsonElement element)
+    {
+        var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var prop in element.EnumerateObject())
+        {
+            dict[prop.Name] = JsonToObject(prop.Value);
+        }
+        return dict;
+    }
+
+    private static List<object?> JsonArrayToList(JsonElement element)
+    {
+        var list = new List<object?>();
+        foreach (var item in element.EnumerateArray())
+        {
+            list.Add(JsonToObject(item));
+        }
+        return list;
     }
 }

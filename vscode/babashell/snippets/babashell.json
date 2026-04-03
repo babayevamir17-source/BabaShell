@@ -80,5 +80,66 @@
       "set #${1:id} ${2:src} \"${3:value}\""
     ],
     "description": "Set any attribute (src, href, data-*)"
+  },
+  "storeVar": {
+    "prefix": "store",
+    "body": [
+      "store ${1:name} = ${2:\"value\"}"
+    ],
+    "description": "Declare state variable"
+  },
+  "increaseBy": {
+    "prefix": "increase",
+    "body": [
+      "increase ${1:score} by ${2:1}"
+    ],
+    "description": "Increase numeric variable"
+  },
+  "ifElse": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition} {",
+      "    $2",
+      "} else {",
+      "    $0",
+      "}"
+    ],
+    "description": "If/else condition block"
+  },
+  "repeatTimes": {
+    "prefix": "repeat",
+    "body": [
+      "repeat ${1:5} times {",
+      "    $0",
+      "}"
+    ],
+    "description": "Repeat block N times"
+  },
+  "forIn": {
+    "prefix": "for in",
+    "body": [
+      "for ${1:item} in ${2:list} {",
+      "    $0",
+      "}"
+    ],
+    "description": "For-each loop"
+  },
+  "waitBlock": {
+    "prefix": "wait",
+    "body": [
+      "wait ${1:2s} {",
+      "    $0",
+      "}"
+    ],
+    "description": "Delay execution"
+  },
+  "fetchAs": {
+    "prefix": "fetch",
+    "body": [
+      "fetch \"${1:https://api.example.com}\" as ${2:data} {",
+      "    set #${3:output} text ${2:data}.${4:name}",
+      "}"
+    ],
+    "description": "Fetch API and bind result"
   }
 }

@@ -65,6 +65,17 @@ public sealed class BabaRunner
             string? path = null;
             if (args.Length > 0)
             {
+                if (string.Equals(args[0], "run", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (args.Length < 2)
+                    {
+                        ErrorReporter.Runtime("Usage: babashell run <file.babashell>");
+                        return 1;
+                    }
+                    path = args[1];
+                }
+                else
+                {
                 if (IsHelpArg(args[0]))
                 {
                     PrintHelp();
@@ -72,6 +83,7 @@ public sealed class BabaRunner
                 }
 
                 path = args[0];
+                }
             }
             else
             {
@@ -95,6 +107,7 @@ public sealed class BabaRunner
             }
 
             var absPath = Path.GetFullPath(path);
+            ErrorReporter.SetFileContext(absPath);
             var source = File.ReadAllText(absPath);
             _interpreter.ExecuteFile(absPath, source);
             return 0;
@@ -105,7 +118,10 @@ public sealed class BabaRunner
         }
         catch (Exception ex)
         {
-            ErrorReporter.Runtime($"Unexpected error: {ex.Message}");
+            var prev = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"[Error] Unexpected error: {ex.Message}");
+            Console.ForegroundColor = prev;
             return 1;
         }
     }
@@ -163,6 +179,7 @@ public sealed class BabaRunner
 
     private static void ParseOnly(string path, string source)
     {
+        ErrorReporter.SetFileContext(path);
         var baseDir = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
         var (_, stripped) = BabaHtmlDirective.Parse(source, baseDir);
         source = stripped;
@@ -229,7 +246,8 @@ public sealed class BabaRunner
     private static void PrintHelp()
     {
         Console.WriteLine("BabaShell");
-        Console.WriteLine("Usage: babashell [file.babashell]");
+        Console.WriteLine("Usage: babashell run [file.babashell|file.baba]");
+        Console.WriteLine("       babashell [file.babashell|file.baba]");
         Console.WriteLine("       babashell --check file.babashell");
         Console.WriteLine("       babashell serve file.babashell [port]");
         Console.WriteLine("       babashell export file.babashell [out.html]");
@@ -241,10 +259,11 @@ public sealed class BabaRunner
         Console.WriteLine("  babashell --version");
         Console.WriteLine();
         Console.WriteLine("Keywords:");
-        Console.WriteLine("  emit, when, clicked, else, loop, func, return, import, true, false, null, and, or, map");
+        Console.WriteLine("  store, increase, decrease, by, if, when, else, repeat, times, for, in");
+        Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
         Console.WriteLine();
         Console.WriteLine("Builtins:");
-        Console.WriteLine("  help");
+        Console.WriteLine("  help, print, random, length");
         Console.WriteLine("  red, green, yellow, blue");
         Console.WriteLine("  read, size, lower, upper, trim, contains, split, join, slice");
         Console.WriteLine("  file_read, file_write, file_append, file_exists, file_delete, file_copy, file_move");
@@ -252,6 +271,13 @@ public sealed class BabaRunner
         Console.WriteLine("  now, unix_time, format_time");
         Console.WriteLine();
         Console.WriteLine("Examples:");
+        Console.WriteLine("  store score = 0");
+        Console.WriteLine("  increase score by 1");
+        Console.WriteLine("  if score > 10 { emit \"win\" } else { emit \"lose\" }");
+        Console.WriteLine("  repeat 3 times { emit \"tick\" }");
+        Console.WriteLine("  for item in [1, 2, 3] { emit item }");
+        Console.WriteLine("  wait 2s { emit \"done\" }");
+        Console.WriteLine("  fetch \"https://api.github.com\" as data { emit data.current_user_url }");
         Console.WriteLine("  emit \"hello\"");
         Console.WriteLine("  when x > 3 { emit x } else { emit 0 }");
         Console.WriteLine("  loop i = 1..3 { emit i }");
