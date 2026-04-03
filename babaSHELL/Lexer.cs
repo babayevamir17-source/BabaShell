@@ -23,6 +23,7 @@ public sealed class Lexer
         ["return"] = TokenType.RETURN,
         ["import"] = TokenType.IMPORT,
         ["clicked"] = TokenType.CLICKED,
+        ["set"] = TokenType.SET,
         ["true"] = TokenType.TRUE,
         ["false"] = TokenType.FALSE,
         ["null"] = TokenType.NULL,

@@ -49,6 +49,10 @@ public static class BabaHtmlDirective
         if (string.IsNullOrWhiteSpace(rest)) return false;
 
         var path = rest;
+        if (path.StartsWith("{") && path.EndsWith("}"))
+        {
+            path = path[1..^1].Trim();
+        }
         if ((path.StartsWith("\"") && path.EndsWith("\"")) || (path.StartsWith("'") && path.EndsWith("'")))
         {
             path = path[1..^1];

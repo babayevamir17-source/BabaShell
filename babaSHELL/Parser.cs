@@ -34,6 +34,7 @@ public sealed class Parser
     {
         if (Match(TokenType.EMIT)) return PrintStatement();
         if (Match(TokenType.WHEN)) return WhenStatement();
+        if (Match(TokenType.SET)) return SetStatement();
         if (Match(TokenType.LOOP)) return ForStatement();
         if (Match(TokenType.RETURN)) return ReturnStatement();
         if (Match(TokenType.IMPORT)) return ImportStatement();
@@ -66,6 +67,30 @@ public sealed class Parser
         }
 
         return IfStatement();
+    }
+
+    private Stmt SetStatement()
+    {
+        string selector;
+        if (Match(TokenType.SELECTOR))
+        {
+            selector = Previous().Lexeme;
+        }
+        else if (Match(TokenType.STRING))
+        {
+            selector = (string)Previous().Literal!;
+        }
+        else
+        {
+            var t = Peek();
+            ErrorReporter.Syntax("Expected selector after 'set'.", t.Line, t.Column);
+            selector = "";
+        }
+
+        var prop = Consume(TokenType.IDENT, "Expected property name.").Lexeme;
+        var value = Expression();
+        ConsumeLineEnd();
+        return new SetStmt(selector, prop, value);
     }
 
     private Stmt IfStatement()

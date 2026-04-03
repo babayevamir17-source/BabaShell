@@ -58,6 +58,13 @@ public sealed class WhenEventStmt(string Selector, string EventName, Stmt Body) 
     public Stmt Body { get; } = Body;
 }
 
+public sealed class SetStmt(string Selector, string Property, Expr Value) : Stmt
+{
+    public string Selector { get; } = Selector;
+    public string Property { get; } = Property;
+    public Expr Value { get; } = Value;
+}
+
 public abstract class Expr { }
 
 public sealed class LiteralExpr(object? Value) : Expr

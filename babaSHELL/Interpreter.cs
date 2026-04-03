@@ -108,6 +108,9 @@ public sealed class Interpreter
             case WhenEventStmt we:
                 _eventHandlers.Add(we);
                 break;
+            case SetStmt:
+                // Browser-only; no-op in CLI.
+                break;
             default:
                 ErrorReporter.Runtime("Unknown statement.");
                 break;

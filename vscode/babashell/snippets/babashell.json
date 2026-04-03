@@ -45,7 +45,7 @@
   "useFrom": {
     "prefix": "use from",
     "body": [
-      "use from ./${1:index.html}"
+      "use from {./${1:index.html}}"
     ],
     "description": "Bind HTML file"
   },
@@ -62,5 +62,12 @@
       "ui.button \"#${1:id}\" \"${2:text}\""
     ],
     "description": "Create button"
+  },
+  "setAttr": {
+    "prefix": "set attr",
+    "body": [
+      "set #${1:id} ${2:src} \"${3:value}\""
+    ],
+    "description": "Set any attribute (src, href, data-*)"
   }
 }

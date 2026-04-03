@@ -66,15 +66,18 @@ public static class BabaRuntime
   }
 
   function transformSet(line) {
-    const m = line.match(/^(\s*)set\s+(.+?)\s+(text|html|value|class)\s+(.+?)\s*;?\s*$/);
+    const m = line.match(/^(\s*)set\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s+(.+?)\s*;?\s*$/);
     if (!m) return line;
     const indent = m[1] ?? "";
     const sel = toSelectorExpr(m[2]);
     const prop = m[3];
     const val = m[4];
     const propMap = { text: "textContent", html: "innerHTML", value: "value", class: "className" };
-    const jsProp = propMap[prop] || "textContent";
-    return `${indent}document.querySelector(${sel}).${jsProp} = ${val};`;
+    const jsProp = propMap[prop];
+    if (jsProp) {
+      return `${indent}document.querySelector(${sel}).${jsProp} = ${val};`;
+    }
+    return `${indent}document.querySelector(${sel}).setAttribute("${prop}", ${val});`;
   }
 
   function transformUi(line) {
