@@ -7,7 +7,7 @@ It is designed to feel easier than JavaScript while keeping practical power for 
 ## Highlights
 
 - Clean scripting syntax:
-  - `store`, `if/else if/else`, `try/catch/throw`, `while`, `break`, `continue`, `class`, `new`, `this`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
+  - `store`, `export`, `import`, `if/else if/else`, `try/catch/throw`, `while`, `break`, `continue`, `class`, `new`, `this`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
 - DOM + CSS control:
   - `set #id text "..."`, `set #id background-color "red"`
   - selector events: `when #btn clicked { ... }`, `when .card hover { ... }`
@@ -123,6 +123,28 @@ class Person {
 store user = new Person("Amir")
 emit user.greet()
 ```
+
+### Modules and Exports
+
+`mathlib.babashell`
+```baba
+export func add(a, b) {
+    return a + b
+}
+
+export store pi = 3.14159
+```
+
+`app.babashell`
+```baba
+import mathlib
+
+emit mathlib.add(2, 3)
+emit mathlib.pi
+```
+
+If a module uses explicit `export`, only exported names are exposed.
+If a module has no `export` declarations, BabaShell keeps the old fallback behavior for backward compatibility.
 
 ### Conditions and Loops
 

@@ -26,10 +26,27 @@ public sealed class Parser
 
     private Stmt Declaration()
     {
+        if (Match(TokenType.EXPORT)) return ExportDeclaration();
         if (Match(TokenType.CLASS)) return ClassDeclaration();
         if (Match(TokenType.FUNC)) return FunctionDeclaration();
         if (Match(TokenType.STORE)) return StoreDeclaration();
         return Statement();
+    }
+
+    private Stmt ExportDeclaration()
+    {
+        Stmt declaration;
+        if (Match(TokenType.CLASS)) declaration = ClassDeclaration();
+        else if (Match(TokenType.FUNC)) declaration = FunctionDeclaration();
+        else if (Match(TokenType.STORE)) declaration = StoreDeclaration();
+        else
+        {
+            var token = Peek();
+            ErrorReporter.Syntax("Expected class, func, or store after 'export'.", token.Line, token.Column);
+            declaration = Statement();
+        }
+
+        return new ExportStmt(declaration);
     }
 
     private Stmt Statement()

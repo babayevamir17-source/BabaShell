@@ -54,6 +54,11 @@ public sealed class ClassStmt(string Name, List<FuncStmt> Methods) : Stmt
     public List<FuncStmt> Methods { get; } = Methods;
 }
 
+public sealed class ExportStmt(Stmt Declaration) : Stmt
+{
+    public Stmt Declaration { get; } = Declaration;
+}
+
 public sealed class VarDeclStmt(string Name, Expr Initializer) : Stmt
 {
     public string Name { get; } = Name;

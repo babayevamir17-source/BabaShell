@@ -28,6 +28,7 @@ public sealed class Lexer
         ["class"] = TokenType.CLASS,
         ["new"] = TokenType.NEW,
         ["this"] = TokenType.THIS,
+        ["export"] = TokenType.EXPORT,
         ["loop"] = TokenType.LOOP,
         ["for"] = TokenType.FOR,
         ["in"] = TokenType.IN,

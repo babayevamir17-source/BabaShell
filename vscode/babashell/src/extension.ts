@@ -6,6 +6,7 @@ import { execFile } from "child_process";
 const KEYWORDS = [
   "emit",
   "store",
+  "export",
   "increase",
   "decrease",
   "by",
@@ -417,6 +418,16 @@ export function activate(context: vscode.ExtensionContext) {
             label: "class",
             detail: "Class snippet",
             body: new vscode.SnippetString("class ${1:Person} {\n    func init(${2:name}) {\n        this.name = ${2:name}\n    }\n\n    func ${3:greet}() {\n        $0\n    }\n}")
+          },
+          {
+            label: "export func",
+            detail: "Export a function from a module",
+            body: new vscode.SnippetString("export func ${1:add}(${2:a}, ${3:b}) {\n    return ${2:a} + ${3:b}\n}")
+          },
+          {
+            label: "import",
+            detail: "Import a module by file name",
+            body: new vscode.SnippetString("import ${1:mathlib}")
           },
           {
             label: "if else",

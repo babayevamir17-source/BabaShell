@@ -101,6 +101,22 @@
     ],
     "description": "Declare state variable"
   },
+  "exportFunc": {
+    "prefix": "export func",
+    "body": [
+      "export func ${1:add}(${2:a}, ${3:b}) {",
+      "    return ${2:a} + ${3:b}",
+      "}"
+    ],
+    "description": "Export a function from a module"
+  },
+  "importModule": {
+    "prefix": "import",
+    "body": [
+      "import ${1:mathlib}"
+    ],
+    "description": "Import a module by file name"
+  },
   "increaseBy": {
     "prefix": "increase",
     "body": [

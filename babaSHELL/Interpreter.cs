@@ -14,8 +14,10 @@ public sealed class Interpreter
     private readonly BabaEnvironment _globals = new();
     private BabaEnvironment _environment;
     private readonly HashSet<string> _imported = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Dictionary<string, object?>> _moduleCache = new(StringComparer.OrdinalIgnoreCase);
     private string _currentFile = string.Empty;
     private readonly List<WhenEventStmt> _eventHandlers = new();
+    private HashSet<string>? _activeExports;
 
     public Interpreter()
     {
@@ -53,8 +55,33 @@ public sealed class Interpreter
         var statements = parser.Parse();
 
         var moduleEnv = new BabaEnvironment(_globals);
-        ExecuteBlock(statements, moduleEnv);
-        return moduleEnv.Snapshot();
+        var previousExports = _activeExports;
+        var exports = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            _activeExports = exports;
+            ExecuteBlock(statements, moduleEnv);
+        }
+        finally
+        {
+            _activeExports = previousExports;
+        }
+
+        var snapshot = moduleEnv.Snapshot();
+        if (exports.Count == 0)
+        {
+            return snapshot;
+        }
+
+        var explicitExports = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in exports)
+        {
+            if (snapshot.TryGetValue(name, out var value))
+            {
+                explicitExports[name] = value;
+            }
+        }
+        return explicitExports;
     }
 
     public void Execute(List<Stmt> statements)
@@ -104,6 +131,9 @@ public sealed class Interpreter
                 break;
             case TryCatchStmt tc:
                 ExecuteTryCatch(tc);
+                break;
+            case ExportStmt ex:
+                ExecuteExport(ex);
                 break;
             case ClassStmt c:
                 ExecuteClass(c);
@@ -335,6 +365,17 @@ public sealed class Interpreter
         _environment.Assign(stmt.Name, new BabaClass(stmt.Name, methods));
     }
 
+    private void ExecuteExport(ExportStmt stmt)
+    {
+        Execute(stmt.Declaration);
+        if (_activeExports == null) return;
+
+        foreach (var name in GetDeclaredNames(stmt.Declaration))
+        {
+            _activeExports.Add(name);
+        }
+    }
+
     private void ExecuteImport(string path)
     {
         if (string.Equals(path, "math", StringComparison.OrdinalIgnoreCase))
@@ -351,6 +392,19 @@ public sealed class Interpreter
         var baseDir = Path.GetDirectoryName(_currentFile) ?? Directory.GetCurrentDirectory();
         var fullPath = Path.GetFullPath(Path.Combine(baseDir, normalized));
 
+        var moduleName = Path.GetFileNameWithoutExtension(fullPath);
+        var dot = moduleName.LastIndexOf('.');
+        if (dot >= 0 && dot < moduleName.Length - 1)
+        {
+            moduleName = moduleName[(dot + 1)..];
+        }
+
+        if (_moduleCache.TryGetValue(fullPath, out var cachedModule))
+        {
+            _environment.Define(moduleName, new Dictionary<string, object?>(cachedModule, StringComparer.OrdinalIgnoreCase));
+            return;
+        }
+
         if (_imported.Contains(fullPath)) return;
         if (!File.Exists(fullPath))
         {
@@ -363,13 +417,6 @@ public sealed class Interpreter
         var prevFile = _currentFile;
         var exports = ExecuteModule(fullPath, source);
         _currentFile = prevFile;
-
-        var moduleName = Path.GetFileNameWithoutExtension(fullPath);
-        var dot = moduleName.LastIndexOf('.');
-        if (dot >= 0 && dot < moduleName.Length - 1)
-        {
-            moduleName = moduleName[(dot + 1)..];
-        }
         var moduleDict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         var globalsSnapshot = _globals.Snapshot();
         foreach (var kv in exports)
@@ -378,6 +425,7 @@ public sealed class Interpreter
             moduleDict[kv.Key] = kv.Value;
         }
 
+        _moduleCache[fullPath] = new Dictionary<string, object?>(moduleDict, StringComparer.OrdinalIgnoreCase);
         _environment.Define(moduleName, moduleDict);
     }
 
@@ -669,5 +717,16 @@ public sealed class Interpreter
             list.Add(JsonToObject(item));
         }
         return list;
+    }
+
+    private static IEnumerable<string> GetDeclaredNames(Stmt stmt)
+    {
+        return stmt switch
+        {
+            VarDeclStmt v => new[] { v.Name },
+            FuncStmt f => new[] { f.Name },
+            ClassStmt c => new[] { c.Name },
+            _ => Array.Empty<string>()
+        };
     }
 }
