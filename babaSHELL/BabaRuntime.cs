@@ -186,6 +186,12 @@ public static class BabaRuntime
     return line;
   }
 
+  function transformCompoundAssignment(line) {
+    const m = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*(?:\[[^\]]+\])?)\s*(\+=|-=|\*=|\/=|%=)\s*(.+?)\s*;?\s*$/);
+    if (!m) return line;
+    return `${m[1]}${m[2]} ${m[3]} ${m[4]};`;
+  }
+
   function transformCall(line) {
     const m = line.match(/^(\s*)call\s+(.+?)\s*;?\s*$/);
     if (!m) return line;
@@ -208,6 +214,25 @@ public static class BabaRuntime
     const m = line.match(/^(\s*)if\s+(.+?)\s*\{\s*$/);
     if (!m) return line;
     return `${m[1]}if (${m[2]}) {`;
+  }
+
+  function transformTryLine(line) {
+    const m = line.match(/^(\s*)try\s*\{\s*$/);
+    if (!m) return line;
+    return `${m[1]}try {`;
+  }
+
+  function transformCatchLine(line) {
+    const m = line.match(/^(\s*\}?\s*)catch(?:\s+([A-Za-z_][A-Za-z0-9_]*))?\s*\{\s*$/);
+    if (!m) return line;
+    const errorName = m[2] || "__bs_error";
+    return `${m[1]}catch (${errorName}) {`;
+  }
+
+  function transformThrowLine(line) {
+    const m = line.match(/^(\s*)throw\s+(.+?)\s*;?\s*$/);
+    if (!m) return line;
+    return `${m[1]}throw ${m[2]};`;
   }
 
   function transformWhileLine(line) {
@@ -318,9 +343,13 @@ public static class BabaRuntime
       replaced = transformFunc(replaced);
       replaced = transformElseIfLine(replaced);
       replaced = transformIfLine(replaced);
+      replaced = transformTryLine(replaced);
+      replaced = transformCatchLine(replaced);
+      replaced = transformThrowLine(replaced);
       replaced = transformWhileLine(replaced);
       replaced = transformStore(replaced);
       replaced = transformAdjust(replaced);
+      replaced = transformCompoundAssignment(replaced);
       replaced = transformCall(replaced);
       replaced = transformSet(replaced);
       replaced = transformUi(replaced);

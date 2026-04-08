@@ -35,6 +35,8 @@ public sealed class Parser
     {
         if (Match(TokenType.EMIT)) return PrintStatement();
         if (Match(TokenType.IF)) return IfStatement();
+        if (Match(TokenType.TRY)) return TryCatchStatement();
+        if (Match(TokenType.THROW)) return ThrowStatement();
         if (Match(TokenType.WHILE)) return WhileStatement();
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.BREAK))
@@ -170,6 +172,29 @@ public sealed class Parser
         var condition = Expression();
         var body = ParseControlBody();
         return new WhileStmt(condition, body);
+    }
+
+    private Stmt TryCatchStatement()
+    {
+        var tryBranch = ParseControlBody();
+        ConsumeOptionalSeparators();
+        Consume(TokenType.CATCH, "Expected 'catch' after try block.");
+
+        string? errorName = null;
+        if (Check(TokenType.IDENT))
+        {
+            errorName = Advance().Lexeme;
+        }
+
+        var catchBranch = ParseControlBody();
+        return new TryCatchStmt(tryBranch, errorName, catchBranch);
+    }
+
+    private Stmt ThrowStatement()
+    {
+        var value = Expression();
+        ConsumeLineEnd();
+        return new ThrowStmt(value);
     }
 
     private Stmt AdjustStatement(bool isIncrease)
@@ -336,24 +361,38 @@ public sealed class Parser
     {
         var expr = Or();
 
-        if (Match(TokenType.EQUAL))
+        if (Match(TokenType.EQUAL, TokenType.PLUS_EQUAL, TokenType.MINUS_EQUAL, TokenType.STAR_EQUAL, TokenType.SLASH_EQUAL, TokenType.PERCENT_EQUAL))
         {
+            var assignmentToken = Previous();
             var value = Assignment();
+            Expr finalValue = value;
 
             if (expr is VariableExpr v)
             {
-                return new AssignExpr(v.Name, value);
+                if (assignmentToken.Type != TokenType.EQUAL)
+                {
+                    finalValue = new BinaryExpr(v, CompoundToBinaryOperator(assignmentToken), value);
+                }
+                return new AssignExpr(v.Name, finalValue);
             }
             if (expr is GetExpr g)
             {
-                return new SetExpr(g.Object, g.Name, value);
+                if (assignmentToken.Type != TokenType.EQUAL)
+                {
+                    finalValue = new BinaryExpr(new GetExpr(g.Object, g.Name), CompoundToBinaryOperator(assignmentToken), value);
+                }
+                return new SetExpr(g.Object, g.Name, finalValue);
             }
             if (expr is IndexExpr i)
             {
-                return new SetIndexExpr(i.Object, i.Index, value);
+                if (assignmentToken.Type != TokenType.EQUAL)
+                {
+                    finalValue = new BinaryExpr(new IndexExpr(i.Object, i.Index), CompoundToBinaryOperator(assignmentToken), value);
+                }
+                return new SetIndexExpr(i.Object, i.Index, finalValue);
             }
 
-            ErrorReporter.Syntax("Invalid assignment target.", Previous().Line, Previous().Column);
+            ErrorReporter.Syntax("Invalid assignment target.", assignmentToken.Line, assignmentToken.Column);
         }
 
         return expr;
@@ -558,6 +597,21 @@ public sealed class Parser
     {
         ConsumeOptionalSeparators();
         return Statement();
+    }
+
+    private static Token CompoundToBinaryOperator(Token token)
+    {
+        var binaryType = token.Type switch
+        {
+            TokenType.PLUS_EQUAL => TokenType.PLUS,
+            TokenType.MINUS_EQUAL => TokenType.MINUS,
+            TokenType.STAR_EQUAL => TokenType.STAR,
+            TokenType.SLASH_EQUAL => TokenType.SLASH,
+            TokenType.PERCENT_EQUAL => TokenType.PERCENT,
+            _ => token.Type
+        };
+
+        return new Token(binaryType, token.Lexeme, token.Literal, token.Line, token.Column);
     }
 
     private bool Match(params TokenType[] types)

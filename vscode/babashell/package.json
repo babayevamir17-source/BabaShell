@@ -2,7 +2,7 @@
   "name": "babashell",
   "displayName": "BabaShell",
   "description": "BabaShell language support: syntax highlighting, autocomplete, and run command",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "publisher": "babashell",
   "engines": {
     "vscode": "^1.85.0"
@@ -143,6 +143,7 @@
   ],
   "main": "./out/extension.js",
   "files": [
+    "LICENSE.md",
     "language-configuration.json",
     "syntaxes/**",
     "snippets/**",

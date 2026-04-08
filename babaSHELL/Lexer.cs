@@ -19,6 +19,9 @@ public sealed class Lexer
         ["when"] = TokenType.WHEN,
         ["if"] = TokenType.IF,
         ["else"] = TokenType.ELSE,
+        ["try"] = TokenType.TRY,
+        ["catch"] = TokenType.CATCH,
+        ["throw"] = TokenType.THROW,
         ["while"] = TokenType.WHILE,
         ["break"] = TokenType.BREAK,
         ["continue"] = TokenType.CONTINUE,
@@ -81,10 +84,10 @@ public sealed class Lexer
             case '.': AddToken(Match('.') ? TokenType.RANGE : TokenType.DOT); break;
             case ':': AddToken(TokenType.COLON); break;
             case ';': AddToken(TokenType.SEMICOLON); break;
-            case '+': AddToken(TokenType.PLUS); break;
-            case '-': AddToken(TokenType.MINUS); break;
-            case '*': AddToken(TokenType.STAR); break;
-            case '%': AddToken(TokenType.PERCENT); break;
+            case '+': AddToken(Match('=') ? TokenType.PLUS_EQUAL : TokenType.PLUS); break;
+            case '-': AddToken(Match('=') ? TokenType.MINUS_EQUAL : TokenType.MINUS); break;
+            case '*': AddToken(Match('=') ? TokenType.STAR_EQUAL : TokenType.STAR); break;
+            case '%': AddToken(Match('=') ? TokenType.PERCENT_EQUAL : TokenType.PERCENT); break;
             case '!': AddToken(Match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
             case '=': AddToken(Match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
             case '<': AddToken(Match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
@@ -96,7 +99,7 @@ public sealed class Lexer
                 }
                 else
                 {
-                    AddToken(TokenType.SLASH);
+                    AddToken(Match('=') ? TokenType.SLASH_EQUAL : TokenType.SLASH);
                 }
                 break;
             case ' ':

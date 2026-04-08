@@ -54,6 +54,10 @@
                                                         {
                                                             "name":  "constant.numeric",
                                                             "match":  "(?\u003c![\\w.])\\d+(?:\\.\\d+)?(?![\\w.])"
+                                                        },
+                                                        {
+                                                            "name":  "keyword.operator.assignment.compound",
+                                                            "match":  "(\\+=|-=|\\*=|/=|%=)"
                                                         }
                                                     ]
                                    },
@@ -82,7 +86,7 @@
                                         "patterns":  [
                                                          {
                                                              "name":  "keyword.control",
-                                                             "match":  "\\b(store|increase|decrease|by|if|else|while|break|continue|emit|when|clicked|click|hover|mouseover|mouseenter|mouseleave|loop|repeat|times|for|in|func|call|return|wait|fetch|as|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
+                                                             "match":  "\\b(store|increase|decrease|by|if|else|try|catch|throw|while|break|continue|emit|when|clicked|click|hover|mouseover|mouseenter|mouseleave|loop|repeat|times|for|in|func|call|return|wait|fetch|as|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
                                                          }
                                                      ]
                                     },

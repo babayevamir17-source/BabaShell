@@ -104,6 +104,24 @@
     ],
     "description": "If/else condition block"
   },
+  "tryCatch": {
+    "prefix": "try catch",
+    "body": [
+      "try {",
+      "    $1",
+      "} catch ${2:err} {",
+      "    $0",
+      "}"
+    ],
+    "description": "Try/catch block"
+  },
+  "throwValue": {
+    "prefix": "throw",
+    "body": [
+      "throw ${1:\"Something went wrong\"}"
+    ],
+    "description": "Throw a script value"
+  },
   "whileLoop": {
     "prefix": "while",
     "body": [
@@ -205,6 +223,13 @@
       "store ${1:name} = input(\"${2:What is your name? }\")"
     ],
     "description": "Prompt the user for text input"
+  },
+  "mathAssign": {
+    "prefix": "math assign",
+    "body": [
+      "${1:score} ${2|+=,-=,*=,/=,%=|} ${3:1}"
+    ],
+    "description": "Compound math assignment"
   },
   "confirmPrompt": {
     "prefix": "confirm",

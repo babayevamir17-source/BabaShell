@@ -10,6 +10,9 @@ const KEYWORDS = [
   "decrease",
   "by",
   "if",
+  "try",
+  "catch",
+  "throw",
   "while",
   "break",
   "continue",
@@ -433,6 +436,16 @@ export function activate(context: vscode.ExtensionContext) {
             body: new vscode.SnippetString("else if ${1:condition} {\n    $0\n}")
           },
           {
+            label: "try catch",
+            detail: "Structured error handling",
+            body: new vscode.SnippetString("try {\n    $1\n} catch ${2:err} {\n    $0\n}")
+          },
+          {
+            label: "throw",
+            detail: "Throw a script value",
+            body: new vscode.SnippetString("throw ${1:\"Something went wrong\"}")
+          },
+          {
             label: "use from",
             detail: "Bind HTML file",
             body: new vscode.SnippetString("use from {./${1:index.html}}")
@@ -466,6 +479,11 @@ export function activate(context: vscode.ExtensionContext) {
             label: "input",
             detail: "Ask the user for text input",
             body: new vscode.SnippetString("store ${1:name} = input(\"${2:What is your name? }\")")
+          },
+          {
+            label: "math assign",
+            detail: "Compound math assignment",
+            body: new vscode.SnippetString("${1:score} ${2|+=,-=,*=,/=,%=|} ${3:1}")
           },
           {
             label: "confirm",

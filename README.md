@@ -7,7 +7,7 @@ It is designed to feel easier than JavaScript while keeping practical power for 
 ## Highlights
 
 - Clean scripting syntax:
-  - `store`, `if/else if/else`, `while`, `break`, `continue`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
+  - `store`, `if/else if/else`, `try/catch/throw`, `while`, `break`, `continue`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
 - DOM + CSS control:
   - `set #id text "..."`, `set #id background-color "red"`
   - selector events: `when #btn clicked { ... }`, `when .card hover { ... }`
@@ -92,6 +92,9 @@ store name = "Amir"
 store score = 0
 increase score by 1
 decrease score by 1
+score += 1
+score *= 2
+name = name + "!"
 ```
 
 ### Functions
@@ -133,6 +136,18 @@ for item in [1,2,3] {
     emit item
 }
 ```
+
+### Error Handling
+
+```baba
+try {
+    throw "Something went wrong"
+} catch err {
+    emit err
+}
+```
+
+`try / catch` currently catches script-thrown values created with `throw`.
 
 ### Async and API
 

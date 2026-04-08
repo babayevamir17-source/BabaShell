@@ -112,6 +112,14 @@ public sealed class BabaRunner
             _interpreter.ExecuteFile(absPath, source);
             return 0;
         }
+        catch (ThrowSignal thrown)
+        {
+            var prev = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"[Error] Uncaught throw: {thrown.Value}");
+            Console.ForegroundColor = prev;
+            return 1;
+        }
         catch (BabaError)
         {
             return 1;
@@ -259,7 +267,7 @@ public sealed class BabaRunner
         Console.WriteLine("  babashell --version");
         Console.WriteLine();
         Console.WriteLine("Keywords:");
-        Console.WriteLine("  store, increase, decrease, by, if, else, while, break, continue, when, repeat, times, for, in");
+        Console.WriteLine("  store, increase, decrease, by, if, else, try, catch, throw, while, break, continue, when, repeat, times, for, in");
         Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
         Console.WriteLine();
         Console.WriteLine("Builtins:");
@@ -273,6 +281,8 @@ public sealed class BabaRunner
         Console.WriteLine("Examples:");
         Console.WriteLine("  store score = 0");
         Console.WriteLine("  increase score by 1");
+        Console.WriteLine("  score += 1");
+        Console.WriteLine("  score *= 2");
         Console.WriteLine("  if score > 10 { emit \"win\" } else { emit \"lose\" }");
         Console.WriteLine("  repeat 3 times { emit \"tick\" }");
         Console.WriteLine("  for item in [1, 2, 3] { emit item }");
@@ -280,6 +290,7 @@ public sealed class BabaRunner
         Console.WriteLine("  fetch \"https://api.github.com\" as data { emit data.current_user_url }");
         Console.WriteLine("  emit \"hello\"");
         Console.WriteLine("  if x > 3 { emit x } else if x == 3 { emit \"equal\" } else { emit 0 }");
+        Console.WriteLine("  try { throw \"bad\" } catch err { emit err }");
         Console.WriteLine("  while score < 10 { increase score by 1 }");
         Console.WriteLine("  store name = input(\"Name: \")");
         Console.WriteLine("  loop i = 1..3 { emit i }");
