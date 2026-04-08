@@ -141,5 +141,32 @@
       "}"
     ],
     "description": "Fetch API and bind result"
+  },
+  "cssNamespace": {
+    "prefix": "css namespace",
+    "body": [
+      "${1:style}.#${2:id}.${3:background-color}: ${4:red}"
+    ],
+    "description": "Apply CSS property using namespace syntax"
+  },
+  "discordWebhook": {
+    "prefix": "discord webhook",
+    "body": [
+      "store ok = bot.discord_webhook_send(\"${1:https://discord.com/api/webhooks/...}\", \"${2:Hello from BabaShell}\")",
+      "if ok {",
+      "    emit \"sent\"",
+      "} else {",
+      "    emit \"failed\"",
+      "}"
+    ],
+    "description": "Send Discord message via webhook"
+  },
+  "httpGet": {
+    "prefix": "http get",
+    "body": [
+      "store data = net.get(\"${1:https://api.example.com}\")",
+      "emit data"
+    ],
+    "description": "HTTP GET helper"
   }
 }

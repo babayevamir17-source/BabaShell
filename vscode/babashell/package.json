@@ -2,7 +2,7 @@
   "name": "babashell",
   "displayName": "BabaShell",
   "description": "BabaShell language support: syntax highlighting, autocomplete, and run command",
-  "version": "0.2.6",
+  "version": "1.0.0",
   "publisher": "babashell",
   "engines": {
     "vscode": "^1.85.0"
@@ -15,7 +15,7 @@
       "properties": {
         "babashell.executablePath": {
           "type": "string",
-          "default": "babashell",
+          "default": "C:\\Program Files\\BabaShell\\babaSHELL.exe",
           "description": "Path to the BabaShell executable."
         }
       }
@@ -165,5 +165,6 @@
     "@vscode/debugprotocol": "^1.67.0"
   }
 }
+
 
 

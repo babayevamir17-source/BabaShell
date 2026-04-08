@@ -1,0 +1,10 @@
+// Send a Discord webhook message from BabaShell
+store webhook = "https://discord.com/api/webhooks/REPLACE_ME"
+store ok = bot.discord_webhook_send(webhook, "Hello from BabaShell v1.0.0", "BabaBot")
+
+if ok {
+    emit "Webhook sent"
+} else {
+    emit "Webhook failed"
+}
+

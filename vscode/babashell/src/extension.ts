@@ -70,6 +70,10 @@ const BUILTINS = [
   "now",
   "unix_time",
   "format_time"
+  ,"type_of","parse_number","to_string","starts_with","ends_with","replace","regex_is_match"
+  ,"push","pop","shift","unshift","keys","values","has_key"
+  ,"http_get","http_post_json","json_parse","json_stringify","discord_webhook_send"
+  ,"hash_sha256","hash_md5","base64_encode","base64_decode"
 ];
 
 const CSS_PROPERTIES = [
@@ -116,6 +120,9 @@ const CSS_PROPERTIES = [
   "align-items",
   "grid-template-columns",
   "grid-template-rows"
+  ,"box-shadow","transform","transition","animation","visibility","user-select","pointer-events"
+  ,"white-space","word-break","letter-spacing","backdrop-filter","filter","outline","object-fit"
+  ,"background-image","background-size","background-repeat","background-position","border-color","border-width"
 ];
 
 const CSS_VALUES_BY_PROPERTY: Record<string, string[]> = {
@@ -133,6 +140,11 @@ const CSS_VALUES_BY_PROPERTY: Record<string, string[]> = {
   "background-color": ["#000000", "#ffffff", "transparent"],
   width: ["100%", "auto", "fit-content"],
   height: ["100%", "auto", "fit-content"]
+  ,"visibility": ["visible","hidden","collapse"]
+  ,"object-fit": ["contain","cover","fill","none","scale-down"]
+  ,"background-repeat": ["no-repeat","repeat","repeat-x","repeat-y"]
+  ,"background-size": ["cover","contain","auto"]
+  ,"user-select": ["none","auto","text","all"]
 };
 
 const LIBRARY_STATE_KEY = "babashell.library.v1";
@@ -229,6 +241,10 @@ export function activate(context: vscode.ExtensionContext) {
     let exePath = configuredExe || "babashell";
 
     if (!configuredExe) {
+      const defaultInstallPath = "C:\\Program Files\\BabaShell\\babaSHELL.exe";
+      if (fs.existsSync(defaultInstallPath)) {
+        exePath = defaultInstallPath;
+      }
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (workspaceFolder) {
         const candidate = path.join(workspaceFolder, "dist", "cli", "babashell.exe");
@@ -243,7 +259,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (hasUseFrom) {
       const port = 3000;
       terminal.sendText(`& "${exePath}" serve "${filePath}" ${port}`);
-      vscode.env.openExternal(vscode.Uri.parse(`http://localhost:${port}/`));
+      vscode.env.openExternal(vscode.Uri.parse(`http://127.0.0.1:${port}/`));
     } else {
       terminal.sendText(`& "${exePath}" "${filePath}"`);
     }
@@ -255,6 +271,10 @@ export function activate(context: vscode.ExtensionContext) {
     const configuredExe = (config.get<string>("executablePath") || "").trim();
     let exePath = configuredExe || "babashell";
     if (!configuredExe) {
+      const defaultInstallPath = "C:\\Program Files\\BabaShell\\babaSHELL.exe";
+      if (fs.existsSync(defaultInstallPath)) {
+        exePath = defaultInstallPath;
+      }
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (workspaceFolder) {
         const candidate = path.join(workspaceFolder, "dist", "cli", "babashell.exe");
@@ -267,9 +287,17 @@ export function activate(context: vscode.ExtensionContext) {
     execFile(exePath, ["--check", doc.fileName], (err, stdout, stderr) => {
       const output = `${stdout ?? ""}\n${stderr ?? ""}`;
       const diags: vscode.Diagnostic[] = [];
-      const regex = /Syntax error \((\d+):(\d+)\):\s*(.+)/g;
+      const regexLegacy = /Syntax error \((\d+):(\d+)\):\s*(.+)/g;
+      const regexV1 = /\[Error\]\s+.*?:(\d+):(\d+)\s+(.+)/g;
       let match: RegExpExecArray | null;
-      while ((match = regex.exec(output)) !== null) {
+      while ((match = regexLegacy.exec(output)) !== null) {
+        const line = Math.max(0, parseInt(match[1], 10) - 1);
+        const col = Math.max(0, parseInt(match[2], 10) - 1);
+        const msg = match[3] || "Syntax error";
+        const range = new vscode.Range(line, col, line, col + 1);
+        diags.push(new vscode.Diagnostic(range, msg, vscode.DiagnosticSeverity.Error));
+      }
+      while ((match = regexV1.exec(output)) !== null) {
         const line = Math.max(0, parseInt(match[1], 10) - 1);
         const col = Math.max(0, parseInt(match[2], 10) - 1);
         const msg = match[3] || "Syntax error";

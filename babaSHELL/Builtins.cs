@@ -1,61 +1,60 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace BabaShell;
 
 public static class Builtins
 {
+    private static readonly HttpClient Http = new();
+
     public static void Register(BabaEnvironment env)
+    {
+        RegisterCore(env);
+        RegisterString(env);
+        RegisterCollections(env);
+        RegisterFilesystem(env);
+        RegisterTime(env);
+        RegisterNetwork(env);
+        RegisterCrypto(env);
+        RegisterColor(env);
+        RegisterModules(env);
+    }
+
+    private static void RegisterCore(BabaEnvironment env)
     {
         env.Define("help", new BuiltinFunction(0, _ =>
         {
-            Console.WriteLine("BabaShell");
+            Console.WriteLine("BabaShell v1");
             Console.WriteLine("Usage: babashell run file.babashell");
+            Console.WriteLine("Web: babashell serve file.babashell [port]");
             Console.WriteLine();
             Console.WriteLine("Keywords:");
             Console.WriteLine("  store, increase, decrease, by, if, when, else, repeat, times, for, in");
             Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
             Console.WriteLine();
-            Console.WriteLine("Builtins:");
-            Console.WriteLine("  help, print, random, length");
-            Console.WriteLine("  red, green, yellow, blue");
-            Console.WriteLine("  read, size, lower, upper, trim, contains, split, join, slice");
-            Console.WriteLine("  file_read, file_write, file_append, file_exists, file_delete, file_copy, file_move");
-            Console.WriteLine("  dir_exists, dir_make, dir_delete, dir_list");
-            Console.WriteLine("  now, unix_time, format_time");
+            Console.WriteLine("Builtin groups:");
+            Console.WriteLine("  Core: print, random, length, type_of, parse_number, to_string");
+            Console.WriteLine("  String: lower, upper, trim, contains, split, join, slice, replace, starts_with, ends_with");
+            Console.WriteLine("  Collections: push, pop, shift, unshift, keys, values, has_key");
+            Console.WriteLine("  File/Dir: file_*, dir_*");
+            Console.WriteLine("  Network/Bot: http_get, http_post_json, discord_webhook_send");
+            Console.WriteLine("  Crypto: hash_sha256, hash_md5, base64_encode, base64_decode");
             return null;
         }));
 
         env.Define("print", new BuiltinFunction(-1, args =>
         {
-            var parts = new List<string>();
-            foreach (var item in args) parts.Add(item?.ToString() ?? "null");
-            Console.WriteLine(string.Join(" ", parts));
+            Console.WriteLine(string.Join(" ", args.Select(Stringify)));
             return null;
-        }));
-
-        env.Define("random", new BuiltinFunction(-1, args =>
-        {
-            var rnd = Random.Shared.NextDouble();
-            if (args.Count == 0) return rnd;
-            if (args.Count == 1)
-            {
-                var max = ToNumber(args[0]);
-                return rnd * max;
-            }
-            var min = ToNumber(args[0]);
-            var max2 = ToNumber(args[1]);
-            return min + (rnd * (max2 - min));
-        }));
-
-        env.Define("length", new BuiltinFunction(1, args =>
-        {
-            if (args[0] is string s) return (double)s.Length;
-            if (args[0] is List<object?> list) return (double)list.Count;
-            if (args[0] is Dictionary<string, object?> dict) return (double)dict.Count;
-            return 0.0;
         }));
 
         env.Define("read", new BuiltinFunction(1, args =>
@@ -64,135 +63,164 @@ public static class Builtins
             return Console.ReadLine() ?? "";
         }));
 
-        env.Define("size", new BuiltinFunction(1, args =>
+        env.Define("random", new BuiltinFunction(-1, args =>
         {
-            if (args[0] is string s) return (double)s.Length;
-            if (args[0] is List<object?> list) return (double)list.Count;
-            if (args[0] is Dictionary<string, object?> dict) return (double)dict.Count;
-            return 0.0;
+            var r = Random.Shared.NextDouble();
+            if (args.Count == 0) return r;
+            if (args.Count == 1) return r * ToNumber(args[0]);
+            var min = ToNumber(args[0]);
+            var max = ToNumber(args[1]);
+            return min + (r * (max - min));
         }));
 
-        env.Define("lower", new BuiltinFunction(1, args =>
+        env.Define("length", new BuiltinFunction(1, args => (double)CountOf(args[0])));
+        env.Define("size", new BuiltinFunction(1, args => (double)CountOf(args[0])));
+
+        env.Define("type_of", new BuiltinFunction(1, args =>
         {
-            return (args[0]?.ToString() ?? "").ToLowerInvariant();
+            var v = args[0];
+            return v switch
+            {
+                null => "null",
+                string => "string",
+                bool => "bool",
+                double or int or long or float or decimal => "number",
+                List<object?> => "array",
+                Dictionary<string, object?> => "map",
+                IBabaCallable => "function",
+                _ => "object"
+            };
         }));
 
-        env.Define("upper", new BuiltinFunction(1, args =>
-        {
-            return (args[0]?.ToString() ?? "").ToUpperInvariant();
-        }));
+        env.Define("parse_number", new BuiltinFunction(1, args => ToNumber(args[0])));
+        env.Define("to_string", new BuiltinFunction(1, args => Stringify(args[0])));
+    }
 
-        env.Define("trim", new BuiltinFunction(1, args =>
-        {
-            return (args[0]?.ToString() ?? "").Trim();
-        }));
-
-        env.Define("contains", new BuiltinFunction(2, args =>
-        {
-            var s = args[0]?.ToString() ?? "";
-            var sub = args[1]?.ToString() ?? "";
-            return s.Contains(sub, StringComparison.OrdinalIgnoreCase);
-        }));
+    private static void RegisterString(BabaEnvironment env)
+    {
+        env.Define("lower", new BuiltinFunction(1, args => (args[0]?.ToString() ?? "").ToLowerInvariant()));
+        env.Define("upper", new BuiltinFunction(1, args => (args[0]?.ToString() ?? "").ToUpperInvariant()));
+        env.Define("trim", new BuiltinFunction(1, args => (args[0]?.ToString() ?? "").Trim()));
+        env.Define("contains", new BuiltinFunction(2, args => (args[0]?.ToString() ?? "").Contains(args[1]?.ToString() ?? "", StringComparison.OrdinalIgnoreCase)));
+        env.Define("starts_with", new BuiltinFunction(2, args => (args[0]?.ToString() ?? "").StartsWith(args[1]?.ToString() ?? "", StringComparison.OrdinalIgnoreCase)));
+        env.Define("ends_with", new BuiltinFunction(2, args => (args[0]?.ToString() ?? "").EndsWith(args[1]?.ToString() ?? "", StringComparison.OrdinalIgnoreCase)));
+        env.Define("replace", new BuiltinFunction(3, args => (args[0]?.ToString() ?? "").Replace(args[1]?.ToString() ?? "", args[2]?.ToString() ?? "", StringComparison.OrdinalIgnoreCase)));
 
         env.Define("split", new BuiltinFunction(2, args =>
         {
-            var s = args[0]?.ToString() ?? "";
+            var input = args[0]?.ToString() ?? "";
             var sep = args[1]?.ToString() ?? "";
-            var parts = s.Split(new[] { sep }, StringSplitOptions.None);
-            var list = new List<object?>();
-            foreach (var p in parts) list.Add(p);
-            return list;
+            var result = input.Split(new[] { sep }, StringSplitOptions.None);
+            return result.Cast<object?>().ToList();
         }));
 
         env.Define("join", new BuiltinFunction(2, args =>
         {
-            var list = args[0] as List<object?> ?? new List<object?>();
+            var list = ToList(args[0]);
             var sep = args[1]?.ToString() ?? "";
-            var parts = new List<string>();
-            foreach (var item in list) parts.Add(item?.ToString() ?? "");
-            return string.Join(sep, parts);
+            return string.Join(sep, list.Select(Stringify));
         }));
 
         env.Define("slice", new BuiltinFunction(-1, args =>
         {
-            if (args.Count < 2 || args.Count > 3) return "";
-            var s = args[0]?.ToString() ?? "";
-            var start = (int)ToNumber(args[1]);
-            var len = args.Count == 3 ? (int)ToNumber(args[2]) : s.Length - start;
+            var input = args.Count > 0 ? args[0]?.ToString() ?? "" : "";
+            var start = args.Count > 1 ? (int)ToNumber(args[1]) : 0;
+            var len = args.Count > 2 ? (int)ToNumber(args[2]) : input.Length - start;
             if (start < 0) start = 0;
-            if (start > s.Length) return "";
+            if (start > input.Length) return "";
             if (len < 0) return "";
-            if (start + len > s.Length) len = s.Length - start;
-            return s.Substring(start, len);
+            if (start + len > input.Length) len = input.Length - start;
+            return input.Substring(start, len);
         }));
 
-        env.Define("red", new BuiltinFunction(1, args =>
+        env.Define("regex_is_match", new BuiltinFunction(2, args =>
         {
-            WriteColor(ConsoleColor.Red, args[0]);
-            return null;
+            var input = args[0]?.ToString() ?? "";
+            var pattern = args[1]?.ToString() ?? "";
+            return Regex.IsMatch(input, pattern);
         }));
+    }
 
-        env.Define("green", new BuiltinFunction(1, args =>
+    private static void RegisterCollections(BabaEnvironment env)
+    {
+        env.Define("push", new BuiltinFunction(2, args =>
         {
-            WriteColor(ConsoleColor.Green, args[0]);
-            return null;
+            var list = ToList(args[0]);
+            list.Add(args[1]);
+            return (double)list.Count;
         }));
 
-        env.Define("yellow", new BuiltinFunction(1, args =>
+        env.Define("pop", new BuiltinFunction(1, args =>
         {
-            WriteColor(ConsoleColor.Yellow, args[0]);
-            return null;
+            var list = ToList(args[0]);
+            if (list.Count == 0) return null;
+            var idx = list.Count - 1;
+            var value = list[idx];
+            list.RemoveAt(idx);
+            return value;
         }));
 
-        env.Define("blue", new BuiltinFunction(1, args =>
+        env.Define("shift", new BuiltinFunction(1, args =>
         {
-            WriteColor(ConsoleColor.Cyan, args[0]);
-            return null;
+            var list = ToList(args[0]);
+            if (list.Count == 0) return null;
+            var value = list[0];
+            list.RemoveAt(0);
+            return value;
         }));
 
-        env.Define("file_read", new BuiltinFunction(1, args =>
+        env.Define("unshift", new BuiltinFunction(2, args =>
         {
-            var path = args[0]?.ToString() ?? "";
-            return File.ReadAllText(path);
+            var list = ToList(args[0]);
+            list.Insert(0, args[1]);
+            return (double)list.Count;
         }));
 
+        env.Define("keys", new BuiltinFunction(1, args =>
+        {
+            var map = ToMap(args[0]);
+            return map.Keys.Cast<object?>().ToList();
+        }));
+
+        env.Define("values", new BuiltinFunction(1, args =>
+        {
+            var map = ToMap(args[0]);
+            return map.Values.Cast<object?>().ToList();
+        }));
+
+        env.Define("has_key", new BuiltinFunction(2, args =>
+        {
+            var map = ToMap(args[0]);
+            var key = args[1]?.ToString() ?? "";
+            return map.ContainsKey(key);
+        }));
+    }
+
+    private static void RegisterFilesystem(BabaEnvironment env)
+    {
+        env.Define("file_read", new BuiltinFunction(1, args => File.ReadAllText(args[0]?.ToString() ?? "")));
         env.Define("file_write", new BuiltinFunction(2, args =>
         {
-            var path = args[0]?.ToString() ?? "";
-            var text = args[1]?.ToString() ?? "";
-            File.WriteAllText(path, text);
+            File.WriteAllText(args[0]?.ToString() ?? "", args[1]?.ToString() ?? "");
             return null;
         }));
-
         env.Define("file_append", new BuiltinFunction(2, args =>
         {
-            var path = args[0]?.ToString() ?? "";
-            var text = args[1]?.ToString() ?? "";
-            File.AppendAllText(path, text);
+            File.AppendAllText(args[0]?.ToString() ?? "", args[1]?.ToString() ?? "");
             return null;
         }));
-
-        env.Define("file_exists", new BuiltinFunction(1, args =>
-        {
-            var path = args[0]?.ToString() ?? "";
-            return File.Exists(path);
-        }));
-
+        env.Define("file_exists", new BuiltinFunction(1, args => File.Exists(args[0]?.ToString() ?? "")));
         env.Define("file_delete", new BuiltinFunction(1, args =>
         {
             var path = args[0]?.ToString() ?? "";
             if (File.Exists(path)) File.Delete(path);
             return null;
         }));
-
         env.Define("file_copy", new BuiltinFunction(2, args =>
         {
-            var from = args[0]?.ToString() ?? "";
-            var to = args[1]?.ToString() ?? "";
-            File.Copy(from, to, true);
+            File.Copy(args[0]?.ToString() ?? "", args[1]?.ToString() ?? "", true);
             return null;
         }));
-
         env.Define("file_move", new BuiltinFunction(2, args =>
         {
             var from = args[0]?.ToString() ?? "";
@@ -202,19 +230,12 @@ public static class Builtins
             return null;
         }));
 
-        env.Define("dir_exists", new BuiltinFunction(1, args =>
-        {
-            var path = args[0]?.ToString() ?? "";
-            return Directory.Exists(path);
-        }));
-
+        env.Define("dir_exists", new BuiltinFunction(1, args => Directory.Exists(args[0]?.ToString() ?? "")));
         env.Define("dir_make", new BuiltinFunction(1, args =>
         {
-            var path = args[0]?.ToString() ?? "";
-            Directory.CreateDirectory(path);
+            Directory.CreateDirectory(args[0]?.ToString() ?? "");
             return null;
         }));
-
         env.Define("dir_delete", new BuiltinFunction(-1, args =>
         {
             if (args.Count == 0) return null;
@@ -223,44 +244,163 @@ public static class Builtins
             if (Directory.Exists(path)) Directory.Delete(path, recursive);
             return null;
         }));
-
         env.Define("dir_list", new BuiltinFunction(1, args =>
         {
             var path = args[0]?.ToString() ?? "";
-            var list = new List<object?>();
-            if (Directory.Exists(path))
-            {
-                foreach (var item in Directory.GetFileSystemEntries(path))
-                {
-                    list.Add(item);
-                }
-            }
-            return list;
+            if (!Directory.Exists(path)) return new List<object?>();
+            return Directory.GetFileSystemEntries(path).Cast<object?>().ToList();
         }));
+    }
 
+    private static void RegisterTime(BabaEnvironment env)
+    {
         env.Define("now", new BuiltinFunction(0, _ => DateTime.Now.ToString("o", CultureInfo.InvariantCulture)));
-
-        env.Define("unix_time", new BuiltinFunction(0, _ =>
-        {
-            var unix = DateTimeOffset.Now.ToUnixTimeSeconds();
-            return (double)unix;
-        }));
-
+        env.Define("unix_time", new BuiltinFunction(0, _ => (double)DateTimeOffset.Now.ToUnixTimeSeconds()));
         env.Define("format_time", new BuiltinFunction(2, args =>
         {
             var input = args[0]?.ToString() ?? "";
-            var format = args[1]?.ToString() ?? "o";
-            if (DateTime.TryParse(input, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
-            {
-                return dt.ToString(format, CultureInfo.InvariantCulture);
-            }
-            return input;
+            var fmt = args[1]?.ToString() ?? "o";
+            if (!DateTime.TryParse(input, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt)) return input;
+            return dt.ToString(fmt, CultureInfo.InvariantCulture);
         }));
+    }
+
+    private static void RegisterNetwork(BabaEnvironment env)
+    {
+        env.Define("http_get", new BuiltinFunction(1, args =>
+        {
+            try
+            {
+                var url = args[0]?.ToString() ?? "";
+                var body = Http.GetStringAsync(url).GetAwaiter().GetResult();
+                return ParseJsonOrText(body);
+            }
+            catch (Exception ex)
+            {
+                ErrorReporter.Warning($"http_get failed: {ex.Message}");
+                return null;
+            }
+        }));
+
+        env.Define("http_post_json", new BuiltinFunction(2, args =>
+        {
+            try
+            {
+                var url = args[0]?.ToString() ?? "";
+                var payload = ToJson(args[1]);
+                using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                var res = Http.PostAsync(url, content).GetAwaiter().GetResult();
+                var text = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                return ParseJsonOrText(text);
+            }
+            catch (Exception ex)
+            {
+                ErrorReporter.Warning($"http_post_json failed: {ex.Message}");
+                return null;
+            }
+        }));
+
+        env.Define("json_parse", new BuiltinFunction(1, args =>
+        {
+            var raw = args[0]?.ToString() ?? "";
+            try
+            {
+                using var doc = JsonDocument.Parse(raw);
+                return JsonToObject(doc.RootElement);
+            }
+            catch
+            {
+                return null;
+            }
+        }));
+
+        env.Define("json_stringify", new BuiltinFunction(1, args => ToJson(args[0])));
+
+        env.Define("discord_webhook_send", new BuiltinFunction(-1, args =>
+        {
+            if (args.Count < 2) return false;
+            var webhookUrl = args[0]?.ToString() ?? "";
+            var contentText = args[1]?.ToString() ?? "";
+            var username = args.Count > 2 ? args[2]?.ToString() : null;
+            var avatarUrl = args.Count > 3 ? args[3]?.ToString() : null;
+
+            var payload = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["content"] = contentText
+            };
+            if (!string.IsNullOrWhiteSpace(username)) payload["username"] = username;
+            if (!string.IsNullOrWhiteSpace(avatarUrl)) payload["avatar_url"] = avatarUrl;
+
+            var json = JsonSerializer.Serialize(payload);
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Post, webhookUrl);
+                req.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                var response = Http.Send(req);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                ErrorReporter.Warning($"discord_webhook_send failed: {ex.Message}");
+                return false;
+            }
+        }));
+    }
+
+    private static void RegisterCrypto(BabaEnvironment env)
+    {
+        env.Define("hash_sha256", new BuiltinFunction(1, args =>
+        {
+            var bytes = Encoding.UTF8.GetBytes(args[0]?.ToString() ?? "");
+            var hash = SHA256.HashData(bytes);
+            return Convert.ToHexString(hash).ToLowerInvariant();
+        }));
+
+        env.Define("hash_md5", new BuiltinFunction(1, args =>
+        {
+            var bytes = Encoding.UTF8.GetBytes(args[0]?.ToString() ?? "");
+            var hash = MD5.HashData(bytes);
+            return Convert.ToHexString(hash).ToLowerInvariant();
+        }));
+
+        env.Define("base64_encode", new BuiltinFunction(1, args =>
+        {
+            var bytes = Encoding.UTF8.GetBytes(args[0]?.ToString() ?? "");
+            return Convert.ToBase64String(bytes);
+        }));
+
+        env.Define("base64_decode", new BuiltinFunction(1, args =>
+        {
+            var raw = args[0]?.ToString() ?? "";
+            var bytes = Convert.FromBase64String(raw);
+            return Encoding.UTF8.GetString(bytes);
+        }));
+    }
+
+    private static void RegisterColor(BabaEnvironment env)
+    {
+        env.Define("red", new BuiltinFunction(1, args => { WriteColor(ConsoleColor.Red, args[0]); return null; }));
+        env.Define("green", new BuiltinFunction(1, args => { WriteColor(ConsoleColor.Green, args[0]); return null; }));
+        env.Define("yellow", new BuiltinFunction(1, args => { WriteColor(ConsoleColor.Yellow, args[0]); return null; }));
+        env.Define("blue", new BuiltinFunction(1, args => { WriteColor(ConsoleColor.Cyan, args[0]); return null; }));
+    }
+
+    private static void RegisterModules(BabaEnvironment env)
+    {
+        env.Define("math", CreateMathModule());
+        env.Define("str", CreateStrModule());
+        env.Define("arr", CreateArrayModule());
+        env.Define("obj", CreateObjectModule());
+        env.Define("json", CreateJsonModule());
+        env.Define("net", CreateNetModule());
+        env.Define("bot", CreateBotModule());
+        env.Define("crypto", CreateCryptoModule());
     }
 
     public static Dictionary<string, object?> CreateMathModule()
     {
-        var module = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
             ["pi"] = Math.PI,
             ["sqrt"] = new BuiltinFunction(1, args => Math.Sqrt(ToNumber(args[0]))),
@@ -272,17 +412,215 @@ public static class Builtins
             ["ceil"] = new BuiltinFunction(1, args => Math.Ceiling(ToNumber(args[0]))),
             ["floor"] = new BuiltinFunction(1, args => Math.Floor(ToNumber(args[0]))),
             ["round"] = new BuiltinFunction(1, args => Math.Round(ToNumber(args[0]))),
-            ["random"] = new BuiltinFunction(0, _ => new Random().NextDouble()),
+            ["min"] = new BuiltinFunction(2, args => Math.Min(ToNumber(args[0]), ToNumber(args[1]))),
+            ["max"] = new BuiltinFunction(2, args => Math.Max(ToNumber(args[0]), ToNumber(args[1]))),
+            ["random"] = new BuiltinFunction(0, _ => Random.Shared.NextDouble())
         };
+    }
 
-        return module;
+    private static Dictionary<string, object?> CreateStrModule()
+    {
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["lower"] = new BuiltinFunction(1, args => (args[0]?.ToString() ?? "").ToLowerInvariant()),
+            ["upper"] = new BuiltinFunction(1, args => (args[0]?.ToString() ?? "").ToUpperInvariant()),
+            ["trim"] = new BuiltinFunction(1, args => (args[0]?.ToString() ?? "").Trim()),
+            ["contains"] = new BuiltinFunction(2, args => (args[0]?.ToString() ?? "").Contains(args[1]?.ToString() ?? "", StringComparison.OrdinalIgnoreCase)),
+            ["replace"] = new BuiltinFunction(3, args => (args[0]?.ToString() ?? "").Replace(args[1]?.ToString() ?? "", args[2]?.ToString() ?? "", StringComparison.OrdinalIgnoreCase)),
+            ["split"] = new BuiltinFunction(2, args => ((args[0]?.ToString() ?? "").Split(new[] { args[1]?.ToString() ?? "" }, StringSplitOptions.None)).Cast<object?>().ToList())
+        };
+    }
+
+    private static Dictionary<string, object?> CreateArrayModule()
+    {
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["push"] = new BuiltinFunction(2, args => { var l = ToList(args[0]); l.Add(args[1]); return (double)l.Count; }),
+            ["pop"] = new BuiltinFunction(1, args => { var l = ToList(args[0]); if (l.Count == 0) return null; var v = l[^1]; l.RemoveAt(l.Count - 1); return v; }),
+            ["len"] = new BuiltinFunction(1, args => (double)ToList(args[0]).Count)
+        };
+    }
+
+    private static Dictionary<string, object?> CreateObjectModule()
+    {
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["keys"] = new BuiltinFunction(1, args => ToMap(args[0]).Keys.Cast<object?>().ToList()),
+            ["values"] = new BuiltinFunction(1, args => ToMap(args[0]).Values.Cast<object?>().ToList()),
+            ["has"] = new BuiltinFunction(2, args => ToMap(args[0]).ContainsKey(args[1]?.ToString() ?? ""))
+        };
+    }
+
+    private static Dictionary<string, object?> CreateJsonModule()
+    {
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["parse"] = new BuiltinFunction(1, args =>
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(args[0]?.ToString() ?? "");
+                    return JsonToObject(doc.RootElement);
+                }
+                catch { return null; }
+            }),
+            ["stringify"] = new BuiltinFunction(1, args => ToJson(args[0]))
+        };
+    }
+
+    private static Dictionary<string, object?> CreateNetModule()
+    {
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["get"] = new BuiltinFunction(1, args => ParseJsonOrText(Http.GetStringAsync(args[0]?.ToString() ?? "").GetAwaiter().GetResult())),
+            ["post_json"] = new BuiltinFunction(2, args =>
+            {
+                try
+                {
+                    var url = args[0]?.ToString() ?? "";
+                    var payload = ToJson(args[1]);
+                    using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                    var res = Http.PostAsync(url, content).GetAwaiter().GetResult();
+                    return ParseJsonOrText(res.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+                }
+                catch
+                {
+                    return null;
+                }
+            })
+        };
+    }
+
+    private static Dictionary<string, object?> CreateBotModule()
+    {
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["discord_webhook_send"] = new BuiltinFunction(-1, args =>
+            {
+                if (args.Count < 2) return false;
+                var webhookUrl = args[0]?.ToString() ?? "";
+                var contentText = args[1]?.ToString() ?? "";
+                var username = args.Count > 2 ? args[2]?.ToString() : null;
+                var avatarUrl = args.Count > 3 ? args[3]?.ToString() : null;
+                var payload = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["content"] = contentText
+                };
+                if (!string.IsNullOrWhiteSpace(username)) payload["username"] = username;
+                if (!string.IsNullOrWhiteSpace(avatarUrl)) payload["avatar_url"] = avatarUrl;
+
+                var json = JsonSerializer.Serialize(payload);
+                using var req = new HttpRequestMessage(HttpMethod.Post, webhookUrl)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+                try
+                {
+                    var res = Http.Send(req);
+                    return res.IsSuccessStatusCode;
+                }
+                catch
+                {
+                    return false;
+                }
+            })
+        };
+    }
+
+    private static Dictionary<string, object?> CreateCryptoModule()
+    {
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sha256"] = new BuiltinFunction(1, args =>
+            {
+                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(args[0]?.ToString() ?? ""));
+                return Convert.ToHexString(hash).ToLowerInvariant();
+            }),
+            ["md5"] = new BuiltinFunction(1, args =>
+            {
+                var hash = MD5.HashData(Encoding.UTF8.GetBytes(args[0]?.ToString() ?? ""));
+                return Convert.ToHexString(hash).ToLowerInvariant();
+            }),
+            ["base64_encode"] = new BuiltinFunction(1, args => Convert.ToBase64String(Encoding.UTF8.GetBytes(args[0]?.ToString() ?? ""))),
+            ["base64_decode"] = new BuiltinFunction(1, args => Encoding.UTF8.GetString(Convert.FromBase64String(args[0]?.ToString() ?? "")))
+        };
+    }
+
+    private static int CountOf(object? value)
+    {
+        return value switch
+        {
+            null => 0,
+            string s => s.Length,
+            List<object?> list => list.Count,
+            Dictionary<string, object?> map => map.Count,
+            _ => 0
+        };
+    }
+
+    private static List<object?> ToList(object? value)
+    {
+        if (value is List<object?> list) return list;
+        ErrorReporter.Runtime("Value must be an array.");
+        return new List<object?>();
+    }
+
+    private static Dictionary<string, object?> ToMap(object? value)
+    {
+        if (value is Dictionary<string, object?> map) return map;
+        ErrorReporter.Runtime("Value must be a map.");
+        return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static object? ParseJsonOrText(string text)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            return JsonToObject(doc.RootElement);
+        }
+        catch
+        {
+            return text;
+        }
+    }
+
+    private static object? JsonToObject(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(p => p.Name, p => JsonToObject(p.Value), StringComparer.OrdinalIgnoreCase),
+            JsonValueKind.Array => element.EnumerateArray().Select(JsonToObject).Cast<object?>().ToList(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var i) ? (double)i : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => element.ToString()
+        };
+    }
+
+    private static string ToJson(object? value)
+    {
+        return JsonSerializer.Serialize(value);
+    }
+
+    private static string Stringify(object? value)
+    {
+        return value switch
+        {
+            null => "null",
+            bool b => b ? "true" : "false",
+            double d => d.ToString(CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? ""
+        };
     }
 
     private static void WriteColor(ConsoleColor color, object? value)
     {
         var prev = Console.ForegroundColor;
         Console.ForegroundColor = color;
-        Console.WriteLine(value?.ToString() ?? "");
+        Console.WriteLine(Stringify(value));
         Console.ForegroundColor = prev;
     }
 
@@ -290,7 +628,10 @@ public static class Builtins
     {
         if (value is double d) return d;
         if (value is int i) return i;
-        if (value is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var res)) return res;
+        if (value is long l) return l;
+        if (value is float f) return f;
+        if (value is decimal m) return (double)m;
+        if (value is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed)) return parsed;
         return 0;
     }
 }
