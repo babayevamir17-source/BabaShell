@@ -21,6 +21,11 @@ It is designed to feel easier than JavaScript while keeping practical power for 
   - core, string, array/map, filesystem, network, crypto, time
   - module-style namespaces: `math`, `str`, `arr`, `obj`, `json`, `net`, `bot`, `crypto`
   - interactive prompts: `input`, `confirm`, `ask_number`, `choose`
+- Semantic analysis before execution:
+  - catches undefined variables
+  - catches `break` / `continue` outside loops
+  - catches `return` outside functions
+  - catches `this` outside classes
 
 ## CLI
 
@@ -255,6 +260,7 @@ Set executable path if needed:
 
 - If `localhost` has issues on your machine, use `127.0.0.1`.
 - `serve` prints LAN URLs so you can test from other devices in the same network.
+- `--check` now runs parser + semantic analyzer, not just syntax parsing.
 
 ## License
 

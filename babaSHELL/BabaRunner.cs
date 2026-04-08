@@ -194,7 +194,8 @@ public sealed class BabaRunner
         var lexer = new Lexer(source);
         var tokens = lexer.ScanTokens();
         var parser = new Parser(tokens);
-        _ = parser.Parse();
+        var statements = parser.Parse();
+        new SemanticAnalyzer().Analyze(statements);
     }
 
     private static void WritePrompt(string text, bool isInline = false)

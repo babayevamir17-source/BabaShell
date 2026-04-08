@@ -15,6 +15,25 @@ namespace BabaShell;
 public static class Builtins
 {
     private static readonly HttpClient Http = new();
+    private static readonly string[] GlobalNames =
+    [
+        "help", "print", "read", "input", "confirm", "ask_number", "choose", "clear",
+        "random", "length", "size", "type_of", "parse_number", "to_string",
+        "lower", "upper", "trim", "contains", "starts_with", "ends_with", "replace", "split", "join", "slice", "regex_is_match",
+        "push", "pop", "shift", "unshift", "keys", "values", "has_key",
+        "file_read", "file_write", "file_append", "file_exists", "file_delete", "file_copy", "file_move",
+        "dir_exists", "dir_make", "dir_delete", "dir_list",
+        "now", "unix_time", "format_time",
+        "http_get", "http_post_json", "json_parse", "json_stringify", "discord_webhook_send",
+        "hash_sha256", "hash_md5", "base64_encode", "base64_decode",
+        "red", "green", "yellow", "blue",
+        "math", "str", "arr", "obj", "json", "net", "bot", "crypto"
+    ];
+
+    public static HashSet<string> GetGlobalNames()
+    {
+        return new HashSet<string>(GlobalNames, StringComparer.OrdinalIgnoreCase);
+    }
 
     public static void Register(BabaEnvironment env)
     {

@@ -42,6 +42,7 @@ public sealed class Interpreter
         var tokens = lexer.ScanTokens();
         var parser = new Parser(tokens);
         var statements = parser.Parse();
+        new SemanticAnalyzer().Analyze(statements);
         Execute(statements);
     }
 
@@ -53,6 +54,7 @@ public sealed class Interpreter
         var tokens = lexer.ScanTokens();
         var parser = new Parser(tokens);
         var statements = parser.Parse();
+        new SemanticAnalyzer().Analyze(statements);
 
         var moduleEnv = new BabaEnvironment(_globals);
         var previousExports = _activeExports;
