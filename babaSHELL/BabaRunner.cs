@@ -267,7 +267,7 @@ public sealed class BabaRunner
         Console.WriteLine("  babashell --version");
         Console.WriteLine();
         Console.WriteLine("Keywords:");
-        Console.WriteLine("  store, increase, decrease, by, if, else, try, catch, throw, while, break, continue, when, repeat, times, for, in");
+        Console.WriteLine("  store, increase, decrease, by, if, else, try, catch, throw, while, break, continue, class, new, this, when, repeat, times, for, in");
         Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
         Console.WriteLine();
         Console.WriteLine("Builtins:");
@@ -292,6 +292,8 @@ public sealed class BabaRunner
         Console.WriteLine("  if x > 3 { emit x } else if x == 3 { emit \"equal\" } else { emit 0 }");
         Console.WriteLine("  try { throw \"bad\" } catch err { emit err }");
         Console.WriteLine("  while score < 10 { increase score by 1 }");
+        Console.WriteLine("  class Person { func init(name) { this.name = name } }");
+        Console.WriteLine("  store user = new Person(\"Amir\")");
         Console.WriteLine("  store name = input(\"Name: \")");
         Console.WriteLine("  loop i = 1..3 { emit i }");
         Console.WriteLine("  func add(a, b) { return a + b }");

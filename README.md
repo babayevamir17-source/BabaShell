@@ -7,7 +7,7 @@ It is designed to feel easier than JavaScript while keeping practical power for 
 ## Highlights
 
 - Clean scripting syntax:
-  - `store`, `if/else if/else`, `try/catch/throw`, `while`, `break`, `continue`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
+  - `store`, `if/else if/else`, `try/catch/throw`, `while`, `break`, `continue`, `class`, `new`, `this`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
 - DOM + CSS control:
   - `set #id text "..."`, `set #id background-color "red"`
   - selector events: `when #btn clicked { ... }`, `when .card hover { ... }`
@@ -105,6 +105,23 @@ func greet(name) {
 }
 
 call greet("Amir")
+```
+
+### Classes and Objects
+
+```baba
+class Person {
+    func init(name) {
+        this.name = name
+    }
+
+    func greet() {
+        return "Hello " + this.name
+    }
+}
+
+store user = new Person("Amir")
+emit user.greet()
 ```
 
 ### Conditions and Loops

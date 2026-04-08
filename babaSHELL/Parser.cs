@@ -26,6 +26,7 @@ public sealed class Parser
 
     private Stmt Declaration()
     {
+        if (Match(TokenType.CLASS)) return ClassDeclaration();
         if (Match(TokenType.FUNC)) return FunctionDeclaration();
         if (Match(TokenType.STORE)) return StoreDeclaration();
         return Statement();
@@ -328,6 +329,29 @@ public sealed class Parser
     private Stmt FunctionDeclaration()
     {
         var name = Consume(TokenType.IDENT, "Expected function name.").Lexeme;
+        return ParseFunctionBody(name);
+    }
+
+    private Stmt ClassDeclaration()
+    {
+        var name = Consume(TokenType.IDENT, "Expected class name.").Lexeme;
+        Consume(TokenType.LBRACE, "Expected class body.");
+        var methods = new List<FuncStmt>();
+
+        while (!Check(TokenType.RBRACE) && !IsAtEnd())
+        {
+            if (Match(TokenType.NEWLINE, TokenType.SEMICOLON)) continue;
+            Consume(TokenType.FUNC, "Expected 'func' before class method.");
+            var methodName = Consume(TokenType.IDENT, "Expected method name.").Lexeme;
+            methods.Add((FuncStmt)ParseFunctionBody(methodName));
+        }
+
+        Consume(TokenType.RBRACE, "Expected '}' after class body.");
+        return new ClassStmt(name, methods);
+    }
+
+    private Stmt ParseFunctionBody(string name)
+    {
         Consume(TokenType.LPAREN, "Expected '('.");
         var parameters = new List<string>();
         if (!Check(TokenType.RPAREN))
@@ -478,6 +502,10 @@ public sealed class Parser
             var right = Unary();
             return new UnaryExpr(op, right);
         }
+        if (Match(TokenType.NEW))
+        {
+            return new NewExpr(Call());
+        }
         return Call();
     }
 
@@ -528,6 +556,7 @@ public sealed class Parser
         if (Match(TokenType.TRUE)) return new LiteralExpr(true);
         if (Match(TokenType.FALSE)) return new LiteralExpr(false);
         if (Match(TokenType.NULL)) return new LiteralExpr(null);
+        if (Match(TokenType.THIS)) return new VariableExpr("this");
 
         if (Match(TokenType.IDENT)) return new VariableExpr(Previous().Lexeme);
 

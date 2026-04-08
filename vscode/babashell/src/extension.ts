@@ -16,6 +16,9 @@ const KEYWORDS = [
   "while",
   "break",
   "continue",
+  "class",
+  "new",
+  "this",
   "when",
   "use",
   "from",
@@ -409,6 +412,11 @@ export function activate(context: vscode.ExtensionContext) {
             label: "func",
             detail: "Function snippet",
             body: new vscode.SnippetString("func ${1:name}(${2:param}) {\n    $0\n}")
+          },
+          {
+            label: "class",
+            detail: "Class snippet",
+            body: new vscode.SnippetString("class ${1:Person} {\n    func init(${2:name}) {\n        this.name = ${2:name}\n    }\n\n    func ${3:greet}() {\n        $0\n    }\n}")
           },
           {
             label: "if else",

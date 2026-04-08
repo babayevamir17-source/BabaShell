@@ -69,6 +69,13 @@ public sealed class BabaFunction : IBabaCallable
 
     public int Arity => _declaration.Params.Count;
 
+    public BabaFunction Bind(BabaInstance instance)
+    {
+        var environment = new BabaEnvironment(_closure);
+        environment.Define("this", instance);
+        return new BabaFunction(_declaration, environment);
+    }
+
     public object? Call(Interpreter interpreter, List<object?> arguments)
     {
         var environment = new BabaEnvironment(_closure);
@@ -108,6 +115,75 @@ public sealed class BuiltinFunction : IBabaCallable
     public override string ToString() => "<builtin>";
 }
 
+public sealed class BabaClass : IBabaCallable
+{
+    private readonly Dictionary<string, BabaFunction> _methods;
+
+    public BabaClass(string name, Dictionary<string, BabaFunction> methods)
+    {
+        Name = name;
+        _methods = methods;
+    }
+
+    public string Name { get; }
+
+    public int Arity => FindMethod("init")?.Arity ?? 0;
+
+    public object? Call(Interpreter interpreter, List<object?> arguments)
+    {
+        var instance = new BabaInstance(this);
+        var initializer = FindMethod("init");
+        if (initializer != null)
+        {
+            initializer.Bind(instance).Call(interpreter, arguments);
+        }
+        return instance;
+    }
+
+    public BabaFunction? FindMethod(string name)
+    {
+        return _methods.TryGetValue(name, out var method) ? method : null;
+    }
+
+    public override string ToString() => $"<class {Name}>";
+}
+
+public sealed class BabaInstance
+{
+    private readonly Dictionary<string, object?> _fields = new(StringComparer.OrdinalIgnoreCase);
+
+    public BabaInstance(BabaClass klass)
+    {
+        Klass = klass;
+    }
+
+    public BabaClass Klass { get; }
+
+    public object? Get(string name)
+    {
+        if (_fields.TryGetValue(name, out var value))
+        {
+            return value;
+        }
+
+        var method = Klass.FindMethod(name);
+        if (method != null)
+        {
+            return method.Bind(this);
+        }
+
+        ErrorReporter.Runtime($"Property not found: {name}");
+        return null;
+    }
+
+    public void Set(string name, object? value)
+    {
+        _fields[name] = value;
+    }
+
+    public override string ToString() => $"<instance {Klass.Name}>";
+}
+
 public sealed class ReturnSignal : Exception
 {
     public ReturnSignal(object? value) => Value = value;
@@ -117,3 +193,13 @@ public sealed class ReturnSignal : Exception
 public sealed class BreakSignal : Exception { }
 
 public sealed class ContinueSignal : Exception { }
+
+public sealed class ThrowSignal : Exception
+{
+    public ThrowSignal(object? value) : base(value?.ToString() ?? "null")
+    {
+        Value = value;
+    }
+
+    public object? Value { get; }
+}

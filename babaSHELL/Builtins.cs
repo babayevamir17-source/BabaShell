@@ -38,7 +38,7 @@ public static class Builtins
             Console.WriteLine("Web: babashell serve file.babashell [port]");
             Console.WriteLine();
             Console.WriteLine("Keywords:");
-            Console.WriteLine("  store, increase, decrease, by, if, else, while, break, continue, when, repeat, times, for, in");
+            Console.WriteLine("  store, increase, decrease, by, if, else, try, catch, throw, while, break, continue, class, new, this, when, repeat, times, for, in");
             Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
             Console.WriteLine();
             Console.WriteLine("Builtin groups:");

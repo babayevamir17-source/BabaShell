@@ -8,6 +8,21 @@
     ],
     "description": "Creates a function"
   },
+  "class": {
+    "prefix": "class",
+    "body": [
+      "class ${1:Person} {",
+      "    func init(${2:name}) {",
+      "        this.name = ${2:name}",
+      "    }",
+      "",
+      "    func ${3:greet}() {",
+      "        $0",
+      "    }",
+      "}"
+    ],
+    "description": "Create a class with constructor and method"
+  },
   "when": {
     "prefix": "when",
     "body": [

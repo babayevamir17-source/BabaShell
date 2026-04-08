@@ -198,9 +198,19 @@ public static class BabaRuntime
     return `${m[1]}${m[2]};`;
   }
 
-  function transformFunc(line) {
+  function transformClassLine(line) {
+    const m = line.match(/^(\s*)class\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{\s*$/);
+    if (!m) return line;
+    return `${m[1]}class ${m[2]} {`;
+  }
+
+  function transformFunc(line, insideClass = false) {
     const m = line.match(/^(\s*)func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*\{\s*$/);
     if (!m) return line;
+    if (insideClass) {
+      const methodName = m[2] === "init" ? "constructor" : m[2];
+      return `${m[1]}${methodName}(${m[3]}) {`;
+    }
     return `${m[1]}function ${m[2]}(${m[3]}) {`;
   }
 
@@ -257,10 +267,21 @@ public static class BabaRuntime
     const out = [];
     let depth = 0;
     const blockStack = [];
+    const classDepths = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
+
+      const insideClass = classDepths.length > 0 && depth >= classDepths[classDepths.length - 1];
+
+      const classBlock = line.match(/^(\s*)class\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{\s*$/);
+      if (classBlock) {
+        out.push(transformClassLine(line));
+        classDepths.push(depth + 1);
+        depth += 1;
+        continue;
+      }
 
       const whenBlock = line.match(/^(\s*)when\s+(.+?)\s+([A-Za-z_][A-Za-z0-9_-]*)\s*\{\s*$/);
       if (whenBlock && isDomEventName(whenBlock[3])) {
@@ -335,12 +356,15 @@ public static class BabaRuntime
         const state = blockStack.pop();
         out.push(state.close);
         depth -= 1;
+        while (classDepths.length > 0 && depth < classDepths[classDepths.length - 1]) {
+          classDepths.pop();
+        }
         continue;
       }
 
       let replaced = transformEmit(line);
       replaced = transformCssNamespace(replaced);
-      replaced = transformFunc(replaced);
+      replaced = transformFunc(replaced, insideClass);
       replaced = transformElseIfLine(replaced);
       replaced = transformIfLine(replaced);
       replaced = transformTryLine(replaced);
@@ -358,6 +382,9 @@ public static class BabaRuntime
       const openCount = (line.match(/\{/g) || []).length;
       const closeCount = (line.match(/\}/g) || []).length;
       depth += openCount - closeCount;
+      while (classDepths.length > 0 && depth < classDepths[classDepths.length - 1]) {
+        classDepths.pop();
+      }
     }
 
     return out.join("\n");

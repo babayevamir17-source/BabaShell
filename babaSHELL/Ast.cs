@@ -36,6 +36,24 @@ public sealed class BreakStmt : Stmt { }
 
 public sealed class ContinueStmt : Stmt { }
 
+public sealed class TryCatchStmt(Stmt TryBranch, string? ErrorName, Stmt CatchBranch) : Stmt
+{
+    public Stmt TryBranch { get; } = TryBranch;
+    public string? ErrorName { get; } = ErrorName;
+    public Stmt CatchBranch { get; } = CatchBranch;
+}
+
+public sealed class ThrowStmt(Expr Value) : Stmt
+{
+    public Expr Value { get; } = Value;
+}
+
+public sealed class ClassStmt(string Name, List<FuncStmt> Methods) : Stmt
+{
+    public string Name { get; } = Name;
+    public List<FuncStmt> Methods { get; } = Methods;
+}
+
 public sealed class VarDeclStmt(string Name, Expr Initializer) : Stmt
 {
     public string Name { get; } = Name;
@@ -186,4 +204,9 @@ public sealed class DictExpr(List<string> Keys, List<Expr> Values) : Expr
 {
     public List<string> Keys { get; } = Keys;
     public List<Expr> Values { get; } = Values;
+}
+
+public sealed class NewExpr(Expr Target) : Expr
+{
+    public Expr Target { get; } = Target;
 }

@@ -102,6 +102,12 @@ public sealed class Interpreter
                 if (IsTruthy(Evaluate(i.Condition))) Execute(i.ThenBranch);
                 else if (i.ElseBranch != null) Execute(i.ElseBranch);
                 break;
+            case TryCatchStmt tc:
+                ExecuteTryCatch(tc);
+                break;
+            case ClassStmt c:
+                ExecuteClass(c);
+                break;
             case WhileStmt w:
                 ExecuteWhile(w);
                 break;
@@ -132,6 +138,8 @@ public sealed class Interpreter
                 break;
             case ReturnStmt r:
                 throw new ReturnSignal(r.Value == null ? null : Evaluate(r.Value));
+            case ThrowStmt t:
+                throw new ThrowSignal(Evaluate(t.Value));
             case BreakStmt:
                 throw new BreakSignal();
             case ContinueStmt:
@@ -299,6 +307,34 @@ public sealed class Interpreter
         }
     }
 
+    private void ExecuteTryCatch(TryCatchStmt stmt)
+    {
+        try
+        {
+            Execute(stmt.TryBranch);
+        }
+        catch (ThrowSignal thrown)
+        {
+            var scope = new BabaEnvironment(_environment);
+            if (!string.IsNullOrWhiteSpace(stmt.ErrorName))
+            {
+                scope.Define(stmt.ErrorName!, thrown.Value);
+            }
+            ExecuteBlock(new List<Stmt> { stmt.CatchBranch }, scope);
+        }
+    }
+
+    private void ExecuteClass(ClassStmt stmt)
+    {
+        _environment.Define(stmt.Name, null);
+        var methods = new Dictionary<string, BabaFunction>(StringComparer.OrdinalIgnoreCase);
+        foreach (var method in stmt.Methods)
+        {
+            methods[method.Name] = new BabaFunction(method, _environment);
+        }
+        _environment.Assign(stmt.Name, new BabaClass(stmt.Name, methods));
+    }
+
     private void ExecuteImport(string path)
     {
         if (string.Equals(path, "math", StringComparison.OrdinalIgnoreCase))
@@ -382,6 +418,8 @@ public sealed class Interpreter
                     dict[d.Keys[i]] = Evaluate(d.Values[i]);
                 }
                 return dict;
+            case NewExpr n:
+                return EvaluateNew(n);
             default:
                 ErrorReporter.Runtime("Unknown expression.");
                 return null;
@@ -459,6 +497,16 @@ public sealed class Interpreter
         return callable.Call(this, args);
     }
 
+    private object? EvaluateNew(NewExpr n)
+    {
+        var value = Evaluate(n.Target);
+        if (value is BabaClass klass)
+        {
+            return klass.Call(this, new List<object?>());
+        }
+        return value;
+    }
+
     private object? EvaluateGet(GetExpr g)
     {
         var obj = Evaluate(g.Object);
@@ -466,6 +514,10 @@ public sealed class Interpreter
         {
             if (dict.TryGetValue(g.Name, out var value)) return value;
             ErrorReporter.Runtime($"Property not found: {g.Name}");
+        }
+        if (obj is BabaInstance instance)
+        {
+            return instance.Get(g.Name);
         }
         ErrorReporter.Runtime("Property access is only supported on maps.");
         return null;
@@ -478,6 +530,12 @@ public sealed class Interpreter
         {
             var value = Evaluate(s.Value);
             dict[s.Name] = value;
+            return value;
+        }
+        if (obj is BabaInstance instance)
+        {
+            var value = Evaluate(s.Value);
+            instance.Set(s.Name, value);
             return value;
         }
         ErrorReporter.Runtime("Property assignment is only supported on maps.");
@@ -573,6 +631,8 @@ public sealed class Interpreter
             }
             return "{" + string.Join(", ", parts) + "}";
         }
+        if (value is BabaInstance instance) return instance.ToString();
+        if (value is BabaClass klass) return klass.ToString();
         return value.ToString() ?? "";
     }
 
