@@ -141,11 +141,12 @@ public sealed class Parser
     private Stmt IfStatement()
     {
         var condition = Expression();
-        var thenBranch = Statement();
+        var thenBranch = ParseControlBody();
+        ConsumeOptionalSeparators();
         Stmt? elseBranch = null;
         if (Match(TokenType.ELSE))
         {
-            elseBranch = Statement();
+            elseBranch = ParseControlBody();
         }
         return new IfStmt(condition, thenBranch, elseBranch);
     }
@@ -163,7 +164,7 @@ public sealed class Parser
     {
         var countExpr = Expression();
         Consume(TokenType.TIMES, "Expected 'times' after repeat count.");
-        var body = Statement();
+        var body = ParseControlBody();
         return new RepeatStmt(countExpr, body);
     }
 
@@ -172,14 +173,14 @@ public sealed class Parser
         var name = Consume(TokenType.IDENT, "Expected loop variable name after 'for'.").Lexeme;
         Consume(TokenType.IN, "Expected 'in'.");
         var collection = Expression();
-        var body = Statement();
+        var body = ParseControlBody();
         return new ForEachStmt(name, collection, body);
     }
 
     private Stmt WaitStatement()
     {
         var durationMs = ParseDurationMs();
-        var body = Statement();
+        var body = ParseControlBody();
         return new WaitStmt(durationMs, body);
     }
 
@@ -210,7 +211,7 @@ public sealed class Parser
         var urlExpr = Expression();
         Consume(TokenType.AS, "Expected 'as' in fetch statement.");
         var target = Consume(TokenType.IDENT, "Expected variable name after 'as'.").Lexeme;
-        var body = Statement();
+        var body = ParseControlBody();
         return new FetchStmt(urlExpr, target, body);
     }
 
@@ -233,7 +234,7 @@ public sealed class Parser
         var start = Expression();
         Consume(TokenType.RANGE, "Expected '..'.");
         var end = Expression();
-        var body = Statement();
+        var body = ParseControlBody();
         return new ForStmt(name, start, end, body);
     }
 
@@ -525,6 +526,17 @@ public sealed class Parser
             return;
         }
         if (Check(TokenType.RBRACE) || Check(TokenType.EOF)) return;
+    }
+
+    private void ConsumeOptionalSeparators()
+    {
+        while (Match(TokenType.NEWLINE, TokenType.SEMICOLON)) { }
+    }
+
+    private Stmt ParseControlBody()
+    {
+        ConsumeOptionalSeparators();
+        return Statement();
     }
 
     private bool Match(params TokenType[] types)

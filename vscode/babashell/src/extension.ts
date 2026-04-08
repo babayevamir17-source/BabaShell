@@ -72,6 +72,138 @@ const BUILTINS = [
   "format_time"
 ];
 
+const CSS_PROPERTIES = [
+  "color",
+  "background",
+  "background-color",
+  "display",
+  "position",
+  "top",
+  "right",
+  "bottom",
+  "left",
+  "width",
+  "height",
+  "max-width",
+  "min-width",
+  "max-height",
+  "min-height",
+  "margin",
+  "margin-top",
+  "margin-right",
+  "margin-bottom",
+  "margin-left",
+  "padding",
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+  "border",
+  "border-radius",
+  "font-size",
+  "font-weight",
+  "line-height",
+  "text-align",
+  "text-decoration",
+  "opacity",
+  "z-index",
+  "overflow",
+  "cursor",
+  "gap",
+  "flex",
+  "flex-direction",
+  "justify-content",
+  "align-items",
+  "grid-template-columns",
+  "grid-template-rows"
+];
+
+const CSS_VALUES_BY_PROPERTY: Record<string, string[]> = {
+  display: ["block", "inline", "inline-block", "none", "flex", "grid"],
+  position: ["static", "relative", "absolute", "fixed", "sticky"],
+  "text-align": ["left", "center", "right", "justify"],
+  "font-weight": ["normal", "bold", "500", "600", "700"],
+  "text-decoration": ["none", "underline", "line-through"],
+  overflow: ["visible", "hidden", "auto", "scroll"],
+  cursor: ["pointer", "default", "text", "move", "not-allowed"],
+  "flex-direction": ["row", "row-reverse", "column", "column-reverse"],
+  "justify-content": ["flex-start", "center", "flex-end", "space-between", "space-around"],
+  "align-items": ["flex-start", "center", "flex-end", "stretch"],
+  color: ["#000000", "#ffffff", "red", "blue", "green", "transparent"],
+  "background-color": ["#000000", "#ffffff", "transparent"],
+  width: ["100%", "auto", "fit-content"],
+  height: ["100%", "auto", "fit-content"]
+};
+
+const LIBRARY_STATE_KEY = "babashell.library.v1";
+
+type LibrarySnapshot = {
+  selectors: string[];
+  properties: string[];
+  values: string[];
+  symbols: string[];
+};
+
+function createEmptyLibrary(): LibrarySnapshot {
+  return { selectors: [], properties: [], values: [], symbols: [] };
+}
+
+function unique(values: Iterable<string>): string[] {
+  const set = new Set<string>();
+  for (const raw of values) {
+    const value = raw.trim();
+    if (value.length > 0) set.add(value);
+  }
+  return [...set];
+}
+
+function parseLibraryFromText(text: string): LibrarySnapshot {
+  const selectors: string[] = [];
+  const properties: string[] = [];
+  const values: string[] = [];
+  const symbols: string[] = [];
+
+  const selectorMatches = text.match(/[#.][A-Za-z_][A-Za-z0-9_-]*/g);
+  if (selectorMatches) selectors.push(...selectorMatches);
+
+  for (const line of text.split(/\r?\n/)) {
+    const setMatch = line.match(/^\s*set\s+("[^"]+"|#[A-Za-z0-9_-]+|\.[A-Za-z0-9_-]+|[A-Za-z_][A-Za-z0-9_-]*)\s+([A-Za-z][A-Za-z0-9-]*)\s+(.+)\s*$/);
+    if (setMatch) {
+      properties.push(setMatch[2].toLowerCase());
+      const rawValue = setMatch[3].trim().replace(/;$/, "");
+      if (rawValue.length > 0) values.push(rawValue.replace(/^"|"$/g, ""));
+    }
+
+    const symbolMatch = line.match(/^\s*(?:store|func)\s+([A-Za-z_][A-Za-z0-9_]*)/);
+    if (symbolMatch) symbols.push(symbolMatch[1]);
+  }
+
+  return {
+    selectors: unique(selectors).slice(0, 500),
+    properties: unique(properties).slice(0, 500),
+    values: unique(values).slice(0, 500),
+    symbols: unique(symbols).slice(0, 500)
+  };
+}
+
+function mergeLibrary(base: LibrarySnapshot, next: LibrarySnapshot): LibrarySnapshot {
+  return {
+    selectors: unique([...base.selectors, ...next.selectors]).slice(0, 1000),
+    properties: unique([...base.properties, ...next.properties]).slice(0, 1000),
+    values: unique([...base.values, ...next.values]).slice(0, 1000),
+    symbols: unique([...base.symbols, ...next.symbols]).slice(0, 1000)
+  };
+}
+
+async function learnFromDocument(context: vscode.ExtensionContext, doc: vscode.TextDocument): Promise<void> {
+  if (doc.languageId !== "babashell") return;
+  const existing = context.globalState.get<LibrarySnapshot>(LIBRARY_STATE_KEY) ?? createEmptyLibrary();
+  const parsed = parseLibraryFromText(doc.getText());
+  const merged = mergeLibrary(existing, parsed);
+  if (JSON.stringify(existing) === JSON.stringify(merged)) return;
+  await context.globalState.update(LIBRARY_STATE_KEY, merged);
+}
+
 export function activate(context: vscode.ExtensionContext) {
   const diagnostics = vscode.languages.createDiagnosticCollection("babashell");
 
@@ -149,28 +281,88 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument(runCheck),
-    vscode.workspace.onDidSaveTextDocument(runCheck),
+    vscode.workspace.onDidOpenTextDocument((doc) => {
+      runCheck(doc);
+      void learnFromDocument(context, doc);
+    }),
+    vscode.workspace.onDidSaveTextDocument((doc) => {
+      runCheck(doc);
+      void learnFromDocument(context, doc);
+    }),
     vscode.window.onDidChangeActiveTextEditor((ed) => {
-      if (ed) runCheck(ed.document);
+      if (!ed) return;
+      runCheck(ed.document);
+      void learnFromDocument(context, ed.document);
     }),
     diagnostics
   );
 
+  const initialDoc = vscode.window.activeTextEditor?.document;
+  if (initialDoc) {
+    runCheck(initialDoc);
+    void learnFromDocument(context, initialDoc);
+  }
+
   const completionProvider = vscode.languages.registerCompletionItemProvider(
     "babashell",
     {
-      provideCompletionItems() {
+      provideCompletionItems(document, position) {
         const items: vscode.CompletionItem[] = [];
+        const dedupe = new Set<string>();
+        const library = context.globalState.get<LibrarySnapshot>(LIBRARY_STATE_KEY) ?? createEmptyLibrary();
+
+        const pushItem = (item: vscode.CompletionItem) => {
+          const key = `${item.label.toString()}::${item.kind ?? 0}`;
+          if (dedupe.has(key)) return;
+          dedupe.add(key);
+          items.push(item);
+        };
+
+        const linePrefix = document.lineAt(position.line).text.slice(0, position.character);
+        const setSelectorContext = /^\s*set\s+([#.\w-]*)$/.test(linePrefix);
+        const propertyContext = /^\s*set\s+("[^"]*"|#[A-Za-z0-9_-]+|\.[A-Za-z0-9_-]+|[A-Za-z_][A-Za-z0-9_-]*)\s+([A-Za-z-]*)$/.exec(linePrefix);
+        const valueContext = /^\s*set\s+("[^"]*"|#[A-Za-z0-9_-]+|\.[A-Za-z0-9_-]+|[A-Za-z_][A-Za-z0-9_-]*)\s+([A-Za-z][A-Za-z0-9-]*)\s+["']?([A-Za-z0-9#().,%\s-]*)$/.exec(linePrefix);
 
         for (const kw of KEYWORDS) {
           const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
-          items.push(item);
+          pushItem(item);
         }
 
         for (const fn of BUILTINS) {
           const item = new vscode.CompletionItem(fn, vscode.CompletionItemKind.Function);
-          items.push(item);
+          pushItem(item);
+        }
+
+        for (const symbol of library.symbols) {
+          const item = new vscode.CompletionItem(symbol, vscode.CompletionItemKind.Variable);
+          item.detail = "Learned from your BabaShell files";
+          pushItem(item);
+        }
+
+        if (setSelectorContext) {
+          for (const selector of library.selectors) {
+            const item = new vscode.CompletionItem(selector, vscode.CompletionItemKind.Reference);
+            item.detail = "Learned selector";
+            pushItem(item);
+          }
+        }
+
+        if (propertyContext) {
+          for (const prop of unique([...CSS_PROPERTIES, ...library.properties])) {
+            const item = new vscode.CompletionItem(prop, vscode.CompletionItemKind.Property);
+            item.detail = "CSS property";
+            pushItem(item);
+          }
+        }
+
+        if (valueContext) {
+          const propName = valueContext[2].toLowerCase();
+          const values = unique([...(CSS_VALUES_BY_PROPERTY[propName] ?? []), ...library.values]);
+          for (const value of values) {
+            const item = new vscode.CompletionItem(value, vscode.CompletionItemKind.Value);
+            item.detail = `CSS value for ${propName}`;
+            pushItem(item);
+          }
         }
 
         const snippets: Array<{ label: string; body: vscode.SnippetString; detail: string }> = [
@@ -180,9 +372,9 @@ export function activate(context: vscode.ExtensionContext) {
             body: new vscode.SnippetString("func ${1:name}(${2:param}) {\n    $0\n}")
           },
           {
-            label: "when",
-            detail: "When/Else snippet",
-            body: new vscode.SnippetString("when ${1:condition} {\n    $0\n} else {\n    \n}")
+            label: "if else",
+            detail: "If/Else snippet",
+            body: new vscode.SnippetString("if ${1:condition} {\n    $0\n} else {\n    \n}")
           },
           {
             label: "use from",
@@ -230,7 +422,7 @@ export function activate(context: vscode.ExtensionContext) {
           const item = new vscode.CompletionItem(sn.label, vscode.CompletionItemKind.Snippet);
           item.insertText = sn.body;
           item.detail = sn.detail;
-          items.push(item);
+          pushItem(item);
         }
 
         return items;
