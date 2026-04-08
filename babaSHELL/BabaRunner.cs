@@ -8,6 +8,16 @@ namespace BabaShell;
 public sealed class BabaRunner
 {
     private readonly Interpreter _interpreter = new();
+    private const string BannerTop = "BabaShell";
+    private static readonly string[] BannerLines =
+    {
+        "██████╗  █████╗ ██████╗  █████╗ ███████╗██╗  ██╗███████╗██╗     ██╗     ",
+        "██╔══██╗██╔══██╗██╔══██╗██╔══██╗██╔════╝██║  ██║██╔════╝██║     ██║     ",
+        "██████╔╝███████║██████╔╝███████║███████╗███████║█████╗  ██║     ██║     ",
+        "██╔══██╗██╔══██║██╔══██╗██╔══██║╚════██║██╔══██║██╔══╝  ██║     ██║     ",
+        "██████╔╝██║  ██║██████╔╝██║  ██║███████║██║  ██║███████╗███████╗███████╗",
+        "╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝"
+    };
 
     public int Run(string[] args)
     {
@@ -136,7 +146,9 @@ public sealed class BabaRunner
 
     private void RunRepl()
     {
-        WritePrompt("BabaShell REPL. Exit: exit / quit / :q");
+        PrintBanner();
+        WritePrompt("Interactive REPL ready. Exit: exit / quit / :q");
+        WriteHint("Type 'help' to see commands, builtins, and examples.");
         var buffer = "";
         while (true)
         {
@@ -207,6 +219,20 @@ public sealed class BabaRunner
         Console.ForegroundColor = prev;
     }
 
+    private static void WriteAccent(string text, ConsoleColor color, bool isInline = false)
+    {
+        var prev = Console.ForegroundColor;
+        Console.ForegroundColor = color;
+        if (isInline) Console.Write(text);
+        else Console.WriteLine(text);
+        Console.ForegroundColor = prev;
+    }
+
+    private static void WriteHint(string text)
+    {
+        WriteAccent(text, ConsoleColor.DarkGray);
+    }
+
     private static bool IsBalanced(string source)
     {
         var depth = 0;
@@ -254,52 +280,98 @@ public sealed class BabaRunner
 
     private static void PrintHelp()
     {
-        Console.WriteLine("BabaShell");
-        Console.WriteLine("Usage: babashell run [file.babashell|file.baba]");
-        Console.WriteLine("       babashell [file.babashell|file.baba]");
-        Console.WriteLine("       babashell --check file.babashell");
-        Console.WriteLine("       babashell serve file.babashell [port]");
-        Console.WriteLine("       babashell export file.babashell [out.html]");
-        Console.WriteLine();
-        Console.WriteLine("Web:");
-        Console.WriteLine("  use from ./page.html   // at top of .babashell to bind custom HTML");
-        Console.WriteLine();
-        Console.WriteLine("Version:");
+        PrintBanner();
+        WriteSection("Usage");
+        Console.WriteLine("  babashell run <file.babashell>");
+        Console.WriteLine("  babashell <file.babashell>");
+        Console.WriteLine("  babashell --check <file.babashell>");
+        Console.WriteLine("  babashell serve <file.babashell> [port]");
+        Console.WriteLine("  babashell export <file.babashell> [out.html]");
         Console.WriteLine("  babashell --version");
         Console.WriteLine();
-        Console.WriteLine("Keywords:");
-        Console.WriteLine("  store, export, increase, decrease, by, if, else, try, catch, throw, while, break, continue, class, new, this, when, repeat, times, for, in");
-        Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
+
+        WriteSection("Workflow");
+        Console.WriteLine("  1. Build logic in a .babashell file");
+        Console.WriteLine("  2. Bind HTML/CSS with 'use from {./page.html}' and 'use from {./theme.css}'");
+        Console.WriteLine("  3. Run locally with 'babashell serve app.babashell 3000'");
+        Console.WriteLine("  4. Export a self-contained page with 'babashell export app.babashell out.html'");
         Console.WriteLine();
-        Console.WriteLine("Builtins:");
-        Console.WriteLine("  help, print, input, confirm, ask_number, choose, clear, random, length");
-        Console.WriteLine("  red, green, yellow, blue");
-        Console.WriteLine("  read, size, lower, upper, trim, contains, split, join, slice");
-        Console.WriteLine("  file_read, file_write, file_append, file_exists, file_delete, file_copy, file_move");
+
+        WriteSection("Core Language");
+        Console.WriteLine("  store, export, import, if, else if, else, try, catch, throw");
+        Console.WriteLine("  while, break, continue, repeat, times, for, in");
+        Console.WriteLine("  func, return, class, new, this");
+        Console.WriteLine("  wait, fetch, as, emit, set, when");
+        Console.WriteLine("  true, false, null, and, or, map");
+        Console.WriteLine();
+
+        WriteSection("Builtins");
+        Console.WriteLine("  help, print, input, confirm, ask_number, choose, clear");
+        Console.WriteLine("  random, length, size, type_of, parse_number, to_string");
+        Console.WriteLine("  lower, upper, trim, contains, starts_with, ends_with, replace");
+        Console.WriteLine("  split, join, slice, regex_is_match");
+        Console.WriteLine("  file_read, file_write, file_append, file_exists, file_delete");
         Console.WriteLine("  dir_exists, dir_make, dir_delete, dir_list");
         Console.WriteLine("  now, unix_time, format_time");
+        Console.WriteLine("  math.*, str.*, arr.*, obj.*, json.*, net.*, bot.*, crypto.*");
         Console.WriteLine();
-        Console.WriteLine("Examples:");
+
+        WriteSection("Examples");
         Console.WriteLine("  store score = 0");
-        Console.WriteLine("  increase score by 1");
         Console.WriteLine("  score += 1");
-        Console.WriteLine("  score *= 2");
         Console.WriteLine("  if score > 10 { emit \"win\" } else { emit \"lose\" }");
-        Console.WriteLine("  repeat 3 times { emit \"tick\" }");
-        Console.WriteLine("  for item in [1, 2, 3] { emit item }");
-        Console.WriteLine("  wait 2s { emit \"done\" }");
-        Console.WriteLine("  fetch \"https://api.github.com\" as data { emit data.current_user_url }");
-        Console.WriteLine("  emit \"hello\"");
-        Console.WriteLine("  if x > 3 { emit x } else if x == 3 { emit \"equal\" } else { emit 0 }");
-        Console.WriteLine("  try { throw \"bad\" } catch err { emit err }");
-        Console.WriteLine("  while score < 10 { increase score by 1 }");
+        Console.WriteLine("  when #btn clicked { set #out text \"clicked\" }");
+        Console.WriteLine("  use from {./index.html}");
+        Console.WriteLine("  use from {./style.css}");
+        Console.WriteLine("  style.#btn.background-color: #2563eb");
         Console.WriteLine("  class Person { func init(name) { this.name = name } }");
-        Console.WriteLine("  store user = new Person(\"Amir\")");
         Console.WriteLine("  export func add(a, b) { return a + b }");
         Console.WriteLine("  import mathlib");
-        Console.WriteLine("  store name = input(\"Name: \")");
-        Console.WriteLine("  loop i = 1..3 { emit i }");
-        Console.WriteLine("  func add(a, b) { return a + b }");
-        Console.WriteLine("  map { \"a\": 1, \"b\": 2 }");
+        Console.WriteLine();
+
+        WriteHint("Semantic analysis runs before execution. '--check' validates syntax + scope rules.");
+    }
+
+    private static void PrintBanner()
+    {
+        var border = new string('═', 78);
+        WriteAccent($"╔{border}╗", ConsoleColor.DarkCyan);
+        for (var i = 0; i < BannerLines.Length; i++)
+        {
+            var color = i switch
+            {
+                0 => ConsoleColor.Cyan,
+                1 => ConsoleColor.Cyan,
+                2 => ConsoleColor.Blue,
+                3 => ConsoleColor.Blue,
+                4 => ConsoleColor.Magenta,
+                _ => ConsoleColor.DarkMagenta
+            };
+
+            WriteAccent("║ ", ConsoleColor.DarkCyan, isInline: true);
+            WriteAccent(BannerLines[i].PadRight(76), color, isInline: true);
+            WriteAccent(" ║", ConsoleColor.DarkCyan);
+        }
+
+        WriteAccent($"╠{border}╣", ConsoleColor.DarkCyan);
+        WriteAccent("║ ", ConsoleColor.DarkCyan, isInline: true);
+        WriteAccent($" {BannerTop} v{BabaUpdater.CurrentVersion} ".PadRight(24), ConsoleColor.White, isInline: true);
+        WriteAccent("Language runtime, web scripting, modules, and semantic analysis".PadRight(52), ConsoleColor.Gray, isInline: true);
+        WriteAccent(" ║", ConsoleColor.DarkCyan);
+        WriteAccent("║ ", ConsoleColor.DarkCyan, isInline: true);
+        WriteAccent(" Commands ".PadRight(24), ConsoleColor.Yellow, isInline: true);
+        WriteAccent("run  serve  export  --check  --version  help".PadRight(52), ConsoleColor.Gray, isInline: true);
+        WriteAccent(" ║", ConsoleColor.DarkCyan);
+        WriteAccent("║ ", ConsoleColor.DarkCyan, isInline: true);
+        WriteAccent(" Quick start ".PadRight(24), ConsoleColor.Green, isInline: true);
+        WriteAccent("use from {./index.html}  ->  when #btn clicked { ... }".PadRight(52), ConsoleColor.Gray, isInline: true);
+        WriteAccent(" ║", ConsoleColor.DarkCyan);
+        WriteAccent($"╚{border}╝", ConsoleColor.DarkCyan);
+        Console.WriteLine();
+    }
+
+    private static void WriteSection(string title)
+    {
+        WriteAccent(title, ConsoleColor.Yellow);
     }
 }

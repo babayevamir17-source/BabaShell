@@ -1,105 +1,58 @@
 # BabaShell
 
-BabaShell is a human-friendly scripting language and runtime for building interactive web behavior with simple syntax, plus backend-style automation features (HTTP, JSON, files, crypto, and bot/webhook helpers).
+BabaShell is a scripting language and runtime built in C# for people who want web behavior, automation, modules, and scripting power without writing raw JavaScript for everything.
 
-It is designed to feel easier than JavaScript while keeping practical power for real projects.
+It is not positioned as a toy syntax wrapper. The current engine includes:
 
-## Highlights
+- a lexer
+- a parser
+- an AST interpreter
+- semantic analysis before execution
+- a web runtime/compiler for HTML-bound scripts
+- a CLI and VS Code extension
 
-- Clean scripting syntax:
-  - `store`, `export`, `import`, `if/else if/else`, `try/catch/throw`, `while`, `break`, `continue`, `class`, `new`, `this`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
-- DOM + CSS control:
-  - `set #id text "..."`, `set #id background-color "red"`
-  - selector events: `when #btn clicked { ... }`, `when .card hover { ... }`
-- HTML/CSS binding:
-  - `use from {./index.html}`
-  - `use from {./theme.css}`
-- CSS namespace syntax:
-  - `theme.#card.width: 320px`
-  - `theme.background-color: #111`
-- Rich standard library:
-  - core, string, array/map, filesystem, network, crypto, time
-  - module-style namespaces: `math`, `str`, `arr`, `obj`, `json`, `net`, `bot`, `crypto`
-  - interactive prompts: `input`, `confirm`, `ask_number`, `choose`
-- Semantic analysis before execution:
-  - catches undefined variables
-  - catches `break` / `continue` outside loops
-  - catches `return` outside functions
-  - catches `this` outside classes
+## What BabaShell Does
 
-## CLI
+- Bind logic to HTML and CSS with `use from`
+- Control the DOM with readable scripting syntax
+- Run scripts in CLI mode
+- Serve live web projects locally
+- Export standalone HTML output
+- Work with files, directories, HTTP, JSON, crypto, time, and Discord webhooks
+- Split code into modules with `import` and `export`
+- Build object-oriented scripts with `class`, `new`, and `this`
 
-```bash
-babashell run app.babashell
-babashell serve app.babashell 3000
-babashell export app.babashell out.html
-babashell --check app.babashell
-```
+## Current Language Shape
 
-## Quick Start
-
-### 1) Web script (`app.babashell`)
+### State and math
 
 ```baba
-use from {./index.html}
-use from {./style.css}
-
-store count = 0
-set #out text "Ready"
-
-when #btn clicked {
-    increase count by 1
-    set #out text ("Clicks: " + count)
-    style.#btn.background-color: #2563eb
-}
-
-when #card hover {
-    set #card style="transform:scale(1.02);transition:0.2s"
-}
-```
-
-### 2) HTML (`index.html`)
-
-```html
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BabaShell Demo</title>
-</head>
-<body>
-  <button id="btn">Click</button>
-  <div id="out"></div>
-  <div id="card">Hover me</div>
-  <!-- BABASHELL -->
-</body>
-</html>
-```
-
-### 3) Serve
-
-```bash
-babashell serve app.babashell 3000
-```
-
-Open:
-
-- `http://127.0.0.1:3000/`
-- `http://localhost:3000/`
-
-## Language Reference
-
-### State
-
-```baba
-store name = "Amir"
 store score = 0
-increase score by 1
-decrease score by 1
 score += 1
 score *= 2
-name = name + "!"
+score = score + 3
+```
+
+### Conditions and loops
+
+```baba
+if score > 10 {
+    emit "Win"
+} else if score > 5 {
+    emit "Close"
+} else {
+    emit "Lose"
+}
+
+while score < 20 {
+    score += 1
+    if score == 15 {
+        continue
+    }
+    if score == 18 {
+        break
+    }
+}
 ```
 
 ### Functions
@@ -109,10 +62,10 @@ func greet(name) {
     return "Hello " + name
 }
 
-call greet("Amir")
+emit greet("Amir")
 ```
 
-### Classes and Objects
+### Classes
 
 ```baba
 class Person {
@@ -129,9 +82,10 @@ store user = new Person("Amir")
 emit user.greet()
 ```
 
-### Modules and Exports
+### Modules
 
 `mathlib.babashell`
+
 ```baba
 export func add(a, b) {
     return a + b
@@ -141,6 +95,7 @@ export store pi = 3.14159
 ```
 
 `app.babashell`
+
 ```baba
 import mathlib
 
@@ -148,77 +103,137 @@ emit mathlib.add(2, 3)
 emit mathlib.pi
 ```
 
-If a module uses explicit `export`, only exported names are exposed.
-If a module has no `export` declarations, BabaShell keeps the old fallback behavior for backward compatibility.
-
-### Conditions and Loops
+### HTML and CSS binding
 
 ```baba
-if score > 10 {
-    emit "Win"
-} else if score > 5 {
-    emit "Close"
-} else {
-    emit "Lose"
+use from {./index.html}
+use from {./style.css}
+
+set #out text "Ready"
+
+when #btn clicked {
+    set #out text "Clicked"
+    set #btn background-color "#2563eb"
+    style.#btn.color: white
 }
 
-repeat 5 times {
-    emit "tick"
-}
-
-while score < 20 {
-    increase score by 1
-    if score == 15 {
-        continue
-    }
-    if score == 18 {
-        break
-    }
-}
-
-for item in [1,2,3] {
-    emit item
+when .card hover {
+    set .card style="transform:scale(1.02)"
 }
 ```
 
-### Error Handling
+## CLI
 
-```baba
-try {
-    throw "Something went wrong"
-} catch err {
-    emit err
-}
+```bash
+babashell run app.babashell
+babashell app.babashell
+babashell serve app.babashell 3000
+babashell export app.babashell out.html
+babashell --check app.babashell
+babashell --version
 ```
 
-`try / catch` currently catches script-thrown values created with `throw`.
+If you run `babashell` with no arguments, it opens the interactive REPL.
 
-### Async and API
+## Interactive Terminal
 
-```baba
-wait 2s {
-    set #out text "Done"
-}
+The CLI now has a proper terminal banner and structured help output.
 
-fetch "https://api.example.com/user" as data {
-    set #out text data.name
-}
+When you open the REPL with:
+
+```bash
+babashell
 ```
+
+you get:
+
+- a branded startup screen
+- a quick command overview
+- a cleaner entry into the REPL
+
+Inside the REPL:
+
+- `help` prints command and feature guidance
+- `exit`, `quit`, or `:q` leaves the REPL
 
 ## Standard Library
 
-### Direct helpers
+### Core
 
-- Core: `print`, `input`, `confirm`, `ask_number`, `choose`, `clear`, `random`, `length`, `type_of`, `parse_number`, `to_string`
-- String: `lower`, `upper`, `trim`, `contains`, `starts_with`, `ends_with`, `replace`, `split`, `join`, `slice`, `regex_is_match`
-- Collections: `push`, `pop`, `shift`, `unshift`, `keys`, `values`, `has_key`
-- Files/dirs: `file_read`, `file_write`, `file_append`, `file_exists`, `file_delete`, `file_copy`, `file_move`, `dir_exists`, `dir_make`, `dir_delete`, `dir_list`
-- Network: `http_get`, `http_post_json`, `json_parse`, `json_stringify`
-- Bot: `discord_webhook_send`
-- Crypto: `hash_sha256`, `hash_md5`, `base64_encode`, `base64_decode`
-- Time: `now`, `unix_time`, `format_time`
+- `help`
+- `print`
+- `input`
+- `confirm`
+- `ask_number`
+- `choose`
+- `clear`
+- `random`
+- `length`
+- `size`
+- `type_of`
+- `parse_number`
+- `to_string`
 
-### Namespaced modules
+### Strings
+
+- `lower`
+- `upper`
+- `trim`
+- `contains`
+- `starts_with`
+- `ends_with`
+- `replace`
+- `split`
+- `join`
+- `slice`
+- `regex_is_match`
+
+### Collections
+
+- `push`
+- `pop`
+- `shift`
+- `unshift`
+- `keys`
+- `values`
+- `has_key`
+
+### File system
+
+- `file_read`
+- `file_write`
+- `file_append`
+- `file_exists`
+- `file_delete`
+- `file_copy`
+- `file_move`
+- `dir_exists`
+- `dir_make`
+- `dir_delete`
+- `dir_list`
+
+### Network and JSON
+
+- `http_get`
+- `http_post_json`
+- `json_parse`
+- `json_stringify`
+
+### Bot and crypto
+
+- `discord_webhook_send`
+- `hash_sha256`
+- `hash_md5`
+- `base64_encode`
+- `base64_decode`
+
+### Time
+
+- `now`
+- `unix_time`
+- `format_time`
+
+### Namespaced builtins
 
 - `math.*`
 - `str.*`
@@ -229,39 +244,111 @@ fetch "https://api.example.com/user" as data {
 - `bot.*`
 - `crypto.*`
 
-Example:
+## Semantic Analysis
 
-```baba
-store result = math.sqrt(144)
-store ok = bot.discord_webhook_send("https://discord.com/api/webhooks/...", "Hello from BabaShell")
-store name = input("What is your name? ")
-if confirm("Send greeting?") {
-    emit ("Hello " + name)
-}
+BabaShell now validates more than syntax before execution.
+
+Current checks include:
+
+- undefined variable usage
+- duplicate declarations in the same scope
+- `break` outside loops
+- `continue` outside loops
+- `return` outside functions
+- `this` outside class methods
+
+That means `--check` is now materially useful:
+
+```bash
+babashell --check app.babashell
 ```
 
 ## VS Code Extension
 
-The extension provides:
+The extension currently provides:
 
-- Syntax highlight
-- Diagnostics (`--check`)
-- Run command integration
-- CSS-aware autocomplete for `set` lines
-- Snippets for web, API, and bot workflows
+- syntax highlighting
+- diagnostics through `--check`
+- run integration
+- snippets
+- CSS-aware autocomplete for `set` and stylesheet-style property usage
 
-Set executable path if needed:
+If the executable path is not auto-detected:
 
 ```json
 "babashell.executablePath": "C:\\Program Files\\BabaShell\\babaSHELL.exe"
 ```
 
-## Notes
+## Project Structure
 
-- If `localhost` has issues on your machine, use `127.0.0.1`.
-- `serve` prints LAN URLs so you can test from other devices in the same network.
-- `--check` now runs parser + semantic analyzer, not just syntax parsing.
+```text
+babaSHELL/
+  Ast.cs
+  Lexer.cs
+  Parser.cs
+  SemanticAnalyzer.cs
+  Interpreter.cs
+  BabaEnvironment.cs
+  Builtins.cs
+  BabaRunner.cs
+  BabaServer.cs
+  BabaExporter.cs
+  BabaRuntime.cs
+
+vscode/babashell/
+  src/
+  syntaxes/
+  snippets/
+  themes/
+```
+
+## Recent Major Upgrades
+
+### v1.5.0
+
+- semantic analysis before execution
+- stronger scope validation
+- clearer CLI safety for invalid control flow
+
+### v1.4.0
+
+- explicit module exports
+- cached imports
+
+### v1.3.0
+
+- `class`
+- `new`
+- `this`
+- constructors via `init`
+
+### v1.2.1
+
+- compound math assignment:
+  - `+=`
+  - `-=`
+  - `*=`
+  - `/=`
+  - `%=`
+
+### v1.1.0
+
+- proper `if / else if / else`
+- event-only `when`
+- interactive input functions
+
+## Direction
+
+The next serious architecture steps are:
+
+1. typed semantic analysis
+2. stronger member binding validation
+3. compiler lowering
+4. bytecode VM
+5. extensible native module/plugin loading
+
+Those are the changes that turn a scripting project into a language engine that scales.
 
 ## License
 
-Add your preferred license file (`LICENSE`) for open-source distribution.
+MIT. See `LICENSE`.
