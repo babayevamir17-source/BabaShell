@@ -113,3 +113,7 @@ public sealed class ReturnSignal : Exception
     public ReturnSignal(object? value) => Value = value;
     public object? Value { get; }
 }
+
+public sealed class BreakSignal : Exception { }
+
+public sealed class ContinueSignal : Exception { }

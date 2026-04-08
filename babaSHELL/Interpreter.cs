@@ -102,6 +102,9 @@ public sealed class Interpreter
                 if (IsTruthy(Evaluate(i.Condition))) Execute(i.ThenBranch);
                 else if (i.ElseBranch != null) Execute(i.ElseBranch);
                 break;
+            case WhileStmt w:
+                ExecuteWhile(w);
+                break;
             case VarDeclStmt v:
                 _environment.Define(v.Name, Evaluate(v.Initializer));
                 break;
@@ -129,6 +132,10 @@ public sealed class Interpreter
                 break;
             case ReturnStmt r:
                 throw new ReturnSignal(r.Value == null ? null : Evaluate(r.Value));
+            case BreakStmt:
+                throw new BreakSignal();
+            case ContinueStmt:
+                throw new ContinueSignal();
             case ImportStmt im:
                 ExecuteImport(im.Path);
                 break;
@@ -158,7 +165,18 @@ public sealed class Interpreter
         if (count < 0) count = 0;
         for (var i = 0; i < count; i++)
         {
-            Execute(stmt.Body);
+            try
+            {
+                Execute(stmt.Body);
+            }
+            catch (ContinueSignal)
+            {
+                continue;
+            }
+            catch (BreakSignal)
+            {
+                break;
+            }
         }
     }
 
@@ -170,7 +188,18 @@ public sealed class Interpreter
             foreach (var item in list)
             {
                 _environment.Assign(stmt.Name, item);
-                Execute(stmt.Body);
+                try
+                {
+                    Execute(stmt.Body);
+                }
+                catch (ContinueSignal)
+                {
+                    continue;
+                }
+                catch (BreakSignal)
+                {
+                    break;
+                }
             }
             return;
         }
@@ -180,7 +209,18 @@ public sealed class Interpreter
             foreach (var value in dict.Values)
             {
                 _environment.Assign(stmt.Name, value);
-                Execute(stmt.Body);
+                try
+                {
+                    Execute(stmt.Body);
+                }
+                catch (ContinueSignal)
+                {
+                    continue;
+                }
+                catch (BreakSignal)
+                {
+                    break;
+                }
             }
             return;
         }
@@ -225,7 +265,37 @@ public sealed class Interpreter
         for (var i = start; step > 0 ? i <= end : i >= end; i += step)
         {
             _environment.Assign(f.Name, i);
-            Execute(f.Body);
+            try
+            {
+                Execute(f.Body);
+            }
+            catch (ContinueSignal)
+            {
+                continue;
+            }
+            catch (BreakSignal)
+            {
+                break;
+            }
+        }
+    }
+
+    private void ExecuteWhile(WhileStmt stmt)
+    {
+        while (IsTruthy(Evaluate(stmt.Condition)))
+        {
+            try
+            {
+                Execute(stmt.Body);
+            }
+            catch (ContinueSignal)
+            {
+                continue;
+            }
+            catch (BreakSignal)
+            {
+                break;
+            }
         }
     }
 

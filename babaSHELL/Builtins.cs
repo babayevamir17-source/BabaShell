@@ -38,11 +38,11 @@ public static class Builtins
             Console.WriteLine("Web: babashell serve file.babashell [port]");
             Console.WriteLine();
             Console.WriteLine("Keywords:");
-            Console.WriteLine("  store, increase, decrease, by, if, when, else, repeat, times, for, in");
+            Console.WriteLine("  store, increase, decrease, by, if, else, while, break, continue, when, repeat, times, for, in");
             Console.WriteLine("  func, call, return, wait, fetch, as, emit, set, import, true, false, null, and, or, map");
             Console.WriteLine();
             Console.WriteLine("Builtin groups:");
-            Console.WriteLine("  Core: print, random, length, type_of, parse_number, to_string");
+            Console.WriteLine("  Core: print, input, confirm, ask_number, choose, clear, random, length, type_of, parse_number, to_string");
             Console.WriteLine("  String: lower, upper, trim, contains, split, join, slice, replace, starts_with, ends_with");
             Console.WriteLine("  Collections: push, pop, shift, unshift, keys, values, has_key");
             Console.WriteLine("  File/Dir: file_*, dir_*");
@@ -61,6 +61,69 @@ public static class Builtins
         {
             Console.Write(args[0]?.ToString() ?? "");
             return Console.ReadLine() ?? "";
+        }));
+
+        env.Define("input", new BuiltinFunction(-1, args =>
+        {
+            var prompt = args.Count > 0 ? args[0]?.ToString() ?? "" : "";
+            if (!string.IsNullOrEmpty(prompt))
+            {
+                Console.Write(prompt);
+            }
+            return Console.ReadLine() ?? "";
+        }));
+
+        env.Define("confirm", new BuiltinFunction(1, args =>
+        {
+            var prompt = args[0]?.ToString() ?? "Continue?";
+            Console.Write($"{prompt} [y/N] ");
+            var answer = (Console.ReadLine() ?? "").Trim();
+            return answer.Equals("y", StringComparison.OrdinalIgnoreCase) ||
+                   answer.Equals("yes", StringComparison.OrdinalIgnoreCase);
+        }));
+
+        env.Define("ask_number", new BuiltinFunction(-1, args =>
+        {
+            var prompt = args.Count > 0 ? args[0]?.ToString() ?? "Enter a number:" : "Enter a number:";
+            var fallback = args.Count > 1 ? ToNumber(args[1]) : 0;
+            Console.Write($"{prompt} ");
+            var raw = Console.ReadLine();
+            if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
+            {
+                return parsed;
+            }
+            return fallback;
+        }));
+
+        env.Define("choose", new BuiltinFunction(-1, args =>
+        {
+            if (args.Count < 2)
+            {
+                ErrorReporter.Runtime("choose requires a prompt and at least one option.");
+            }
+
+            var prompt = args[0]?.ToString() ?? "Choose:";
+            Console.WriteLine(prompt);
+            for (var i = 1; i < args.Count; i++)
+            {
+                Console.WriteLine($"  {i}. {Stringify(args[i])}");
+            }
+            Console.Write("> ");
+            var raw = Console.ReadLine();
+            if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var selected))
+            {
+                if (selected >= 1 && selected < args.Count)
+                {
+                    return args[selected];
+                }
+            }
+            return args[1];
+        }));
+
+        env.Define("clear", new BuiltinFunction(0, _ =>
+        {
+            Console.Clear();
+            return null;
         }));
 
         env.Define("random", new BuiltinFunction(-1, args =>

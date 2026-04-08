@@ -35,7 +35,18 @@ public sealed class Parser
     {
         if (Match(TokenType.EMIT)) return PrintStatement();
         if (Match(TokenType.IF)) return IfStatement();
+        if (Match(TokenType.WHILE)) return WhileStatement();
         if (Match(TokenType.WHEN)) return WhenStatement();
+        if (Match(TokenType.BREAK))
+        {
+            ConsumeLineEnd();
+            return new BreakStmt();
+        }
+        if (Match(TokenType.CONTINUE))
+        {
+            ConsumeLineEnd();
+            return new ContinueStmt();
+        }
         if (Match(TokenType.SET)) return SetStatement();
         if (Match(TokenType.INCREASE)) return AdjustStatement(isIncrease: true);
         if (Match(TokenType.DECREASE)) return AdjustStatement(isIncrease: false);
@@ -73,38 +84,38 @@ public sealed class Parser
 
     private Stmt WhenStatement()
     {
-        if (Check(TokenType.SELECTOR) || Check(TokenType.STRING) || Check(TokenType.IDENT))
+        if (!Check(TokenType.SELECTOR) && !Check(TokenType.STRING) && !Check(TokenType.IDENT))
         {
-            var selectorToken = Advance();
-            string? eventName = null;
-            if (Match(TokenType.CLICKED))
-            {
-                eventName = "clicked";
-            }
-            else if (Match(TokenType.HOVER))
-            {
-                eventName = "hover";
-            }
-            else if (Check(TokenType.IDENT))
-            {
-                eventName = Advance().Lexeme;
-            }
-
-            if (eventName == null)
-            {
-                _current--;
-            }
-            else
-            {
-                var selector = selectorToken.Type == TokenType.STRING
-                    ? (string)selectorToken.Literal!
-                    : selectorToken.Lexeme;
-                var body = Statement();
-                return new WhenEventStmt(selector, eventName, body);
-            }
+            var token = Peek();
+            ErrorReporter.Syntax("Expected a selector after 'when'. Use 'if' for conditions.", token.Line, token.Column);
         }
 
-        return IfStatement();
+        var selectorToken = Advance();
+        string? eventName = null;
+        if (Match(TokenType.CLICKED))
+        {
+            eventName = "clicked";
+        }
+        else if (Match(TokenType.HOVER))
+        {
+            eventName = "hover";
+        }
+        else if (Check(TokenType.IDENT))
+        {
+            eventName = Advance().Lexeme;
+        }
+
+        if (eventName == null)
+        {
+            var token = Peek();
+            ErrorReporter.Syntax("Expected an event name after the selector in 'when'. Use 'if' for conditional logic.", token.Line, token.Column);
+        }
+
+        var selector = selectorToken.Type == TokenType.STRING
+            ? (string)selectorToken.Literal!
+            : selectorToken.Lexeme;
+        var body = Statement();
+        return new WhenEventStmt(selector, eventName!, body);
     }
 
     private Stmt SetStatement()
@@ -146,9 +157,19 @@ public sealed class Parser
         Stmt? elseBranch = null;
         if (Match(TokenType.ELSE))
         {
-            elseBranch = ParseControlBody();
+            ConsumeOptionalSeparators();
+            elseBranch = Match(TokenType.IF)
+                ? IfStatement()
+                : ParseControlBody();
         }
         return new IfStmt(condition, thenBranch, elseBranch);
+    }
+
+    private Stmt WhileStatement()
+    {
+        var condition = Expression();
+        var body = ParseControlBody();
+        return new WhileStmt(condition, body);
     }
 
     private Stmt AdjustStatement(bool isIncrease)

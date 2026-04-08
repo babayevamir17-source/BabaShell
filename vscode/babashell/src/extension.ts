@@ -10,6 +10,9 @@ const KEYWORDS = [
   "decrease",
   "by",
   "if",
+  "while",
+  "break",
+  "continue",
   "when",
   "use",
   "from",
@@ -48,6 +51,11 @@ const BUILTINS = [
   "yellow",
   "blue",
   "read",
+  "input",
+  "confirm",
+  "ask_number",
+  "choose",
+  "clear",
   "size",
   "lower",
   "upper",
@@ -405,6 +413,26 @@ export function activate(context: vscode.ExtensionContext) {
             body: new vscode.SnippetString("if ${1:condition} {\n    $0\n} else {\n    \n}")
           },
           {
+            label: "while",
+            detail: "While loop",
+            body: new vscode.SnippetString("while ${1:condition} {\n    $0\n}")
+          },
+          {
+            label: "break",
+            detail: "Break out of a loop",
+            body: new vscode.SnippetString("break")
+          },
+          {
+            label: "continue",
+            detail: "Skip to the next loop iteration",
+            body: new vscode.SnippetString("continue")
+          },
+          {
+            label: "else if",
+            detail: "Else-if branch",
+            body: new vscode.SnippetString("else if ${1:condition} {\n    $0\n}")
+          },
+          {
             label: "use from",
             detail: "Bind HTML file",
             body: new vscode.SnippetString("use from {./${1:index.html}}")
@@ -433,6 +461,16 @@ export function activate(context: vscode.ExtensionContext) {
             label: "set attr",
             detail: "Set HTML attribute",
             body: new vscode.SnippetString("set #${1:id} ${2:src} \"${3:value}\"")
+          },
+          {
+            label: "input",
+            detail: "Ask the user for text input",
+            body: new vscode.SnippetString("store ${1:name} = input(\"${2:What is your name? }\")")
+          },
+          {
+            label: "confirm",
+            detail: "Ask the user for yes/no confirmation",
+            body: new vscode.SnippetString("if confirm(\"${1:Continue?}\") {\n    $0\n}")
           },
           {
             label: "ui.button",

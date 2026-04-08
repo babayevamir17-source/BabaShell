@@ -26,6 +26,16 @@ public sealed class IfStmt(Expr Condition, Stmt ThenBranch, Stmt? ElseBranch) : 
     public Stmt? ElseBranch { get; } = ElseBranch;
 }
 
+public sealed class WhileStmt(Expr Condition, Stmt Body) : Stmt
+{
+    public Expr Condition { get; } = Condition;
+    public Stmt Body { get; } = Body;
+}
+
+public sealed class BreakStmt : Stmt { }
+
+public sealed class ContinueStmt : Stmt { }
+
 public sealed class VarDeclStmt(string Name, Expr Initializer) : Stmt
 {
     public string Name { get; } = Name;

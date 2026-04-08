@@ -1,5 +1,9 @@
 ﻿/* BabaShell bundle: runtime + auto-load */
 (() => {
+  const nativeAlert = window.alert.bind(window);
+  const nativePrompt = window.prompt.bind(window);
+  const nativeConfirm = window.confirm.bind(window);
+
   function toSelectorExpr(raw) {
     const sel = raw.trim();
     if (sel.startsWith("'") || sel.startsWith("\"")) return sel;
@@ -173,10 +177,22 @@
     return `${m[1]}function ${m[2]}(${m[3]}) {`;
   }
 
+  function transformElseIfLine(line) {
+    const m = line.match(/^(\s*\}?\s*)else\s+if\s+(.+?)\s*\{\s*$/);
+    if (!m) return line;
+    return `${m[1]}else if (${m[2]}) {`;
+  }
+
   function transformIfLine(line) {
     const m = line.match(/^(\s*)if\s+(.+?)\s*\{\s*$/);
     if (!m) return line;
     return `${m[1]}if (${m[2]}) {`;
+  }
+
+  function transformWhileLine(line) {
+    const m = line.match(/^(\s*)while\s+(.+?)\s*\{\s*$/);
+    if (!m) return line;
+    return `${m[1]}while (${m[2]}) {`;
   }
 
   function toDurationMsExpr(raw) {
@@ -211,13 +227,8 @@
         continue;
       }
 
-      const whenCondBlock = line.match(/^(\s*)when\s+(.+?)\s*\{\s*$/);
-      if (whenCondBlock) {
-        const indent = whenCondBlock[1] ?? "";
-        out.push(`${indent}if (${whenCondBlock[2]}) {`);
-        depth += 1;
-        blockStack.push({ depth, close: `${indent}}` });
-        continue;
+      if (/^\s*when\b/.test(line)) {
+        throw new Error(`BabaShell line ${i + 1}: 'when' is event-only. Use 'if' / 'else if' / 'else' for conditions.`);
       }
 
       const repeatBlock = line.match(/^(\s*)repeat\s+(.+?)\s+times\s*\{\s*$/);
@@ -284,7 +295,9 @@
       let replaced = transformEmit(line);
       replaced = transformCssNamespace(replaced);
       replaced = transformFunc(replaced);
+      replaced = transformElseIfLine(replaced);
       replaced = transformIfLine(replaced);
+      replaced = transformWhileLine(replaced);
       replaced = transformStore(replaced);
       replaced = transformAdjust(replaced);
       replaced = transformCall(replaced);
@@ -300,7 +313,25 @@
     return out.join("\n");
   }
 
-  function emit(msg) { alert(msg); }
+  function emit(msg) { nativeAlert(msg); }
+  function input(promptText = "") { return nativePrompt(String(promptText ?? "")) ?? ""; }
+  function confirmAsk(promptText = "Continue?") { return nativeConfirm(String(promptText ?? "")); }
+  function askNumber(promptText = "Enter a number", fallback = 0) {
+    const raw = nativePrompt(String(promptText ?? ""), String(fallback ?? 0));
+    if (raw === null || raw.trim() === "") return Number(fallback ?? 0);
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : Number(fallback ?? 0);
+  }
+  function choose(promptText, ...options) {
+    if (!options.length) return "";
+    const lines = options.map((value, index) => `${index + 1}. ${value}`).join("\n");
+    const raw = nativePrompt(`${promptText}\n${lines}`, "1");
+    const selected = Number(raw);
+    if (Number.isInteger(selected) && selected >= 1 && selected <= options.length) {
+      return options[selected - 1];
+    }
+    return options[0];
+  }
   function $(selector) { return document.querySelector(selector); }
   function $$(selector) { return Array.from(document.querySelectorAll(selector)); }
   function on(selector, event, handler) { const el = $(selector); if (el) el.addEventListener(event, handler); }
@@ -385,10 +416,14 @@
   }
 
   window.emit = emit;
+  window.input = input;
+  window.confirm = confirmAsk;
+  window.ask_number = askNumber;
+  window.choose = choose;
   window.$ = $;
   window.$$ = $$;
   window.on = on;
-  window.babashell = { compile: compileBabaShell, boot, emit, $, $$, on, __on, ui };
+  window.babashell = { compile: compileBabaShell, boot, emit, input, confirm: confirmAsk, ask_number: askNumber, choose, $, $$, on, __on, ui };
   window.ui = ui;
 
   autoLoadFromScriptTag();

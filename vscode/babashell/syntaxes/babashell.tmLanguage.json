@@ -82,7 +82,7 @@
                                         "patterns":  [
                                                          {
                                                              "name":  "keyword.control",
-                                                             "match":  "\\b(store|increase|decrease|by|if|emit|when|clicked|click|hover|mouseover|mouseenter|mouseleave|else|loop|repeat|times|for|in|func|call|return|wait|fetch|as|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
+                                                             "match":  "\\b(store|increase|decrease|by|if|else|while|break|continue|emit|when|clicked|click|hover|mouseover|mouseenter|mouseleave|loop|repeat|times|for|in|func|call|return|wait|fetch|as|import|true|false|null|and|or|map|use|from|set|ui|serve|export|build)\\b"
                                                          }
                                                      ]
                                     },
@@ -102,7 +102,7 @@
                                                          },
                                                          {
                                                              "name":  "support.function",
-                                                             "match":  "\\b(help|red|green|yellow|blue|read|size|lower|upper|trim|contains|split|join|slice|file_read|file_write|file_append|file_exists|file_delete|file_copy|file_move|dir_exists|dir_make|dir_delete|dir_list|now|unix_time|format_time)\\b"
+                                                             "match":  "\\b(help|print|read|input|confirm|ask_number|choose|clear|random|length|size|type_of|parse_number|to_string|red|green|yellow|blue|lower|upper|trim|contains|starts_with|ends_with|replace|regex_is_match|split|join|slice|push|pop|shift|unshift|keys|values|has_key|file_read|file_write|file_append|file_exists|file_delete|file_copy|file_move|dir_exists|dir_make|dir_delete|dir_list|http_get|http_post_json|json_parse|json_stringify|discord_webhook_send|hash_sha256|hash_md5|base64_encode|base64_decode|now|unix_time|format_time)\\b"
                                                          }
                                                      ]
                                     }

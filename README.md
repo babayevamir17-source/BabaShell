@@ -7,7 +7,7 @@ It is designed to feel easier than JavaScript while keeping practical power for 
 ## Highlights
 
 - Clean scripting syntax:
-  - `store`, `if/else`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
+  - `store`, `if/else if/else`, `while`, `break`, `continue`, `repeat`, `for in`, `func`, `call`, `wait`, `fetch`
 - DOM + CSS control:
   - `set #id text "..."`, `set #id background-color "red"`
   - selector events: `when #btn clicked { ... }`, `when .card hover { ... }`
@@ -20,6 +20,7 @@ It is designed to feel easier than JavaScript while keeping practical power for 
 - Rich standard library:
   - core, string, array/map, filesystem, network, crypto, time
   - module-style namespaces: `math`, `str`, `arr`, `obj`, `json`, `net`, `bot`, `crypto`
+  - interactive prompts: `input`, `confirm`, `ask_number`, `choose`
 
 ## CLI
 
@@ -108,16 +109,24 @@ call greet("Amir")
 ```baba
 if score > 10 {
     emit "Win"
+} else if score > 5 {
+    emit "Close"
 } else {
     emit "Lose"
 }
 
-when score > 10 {
-    emit "Win"
-}
-
 repeat 5 times {
     emit "tick"
+}
+
+while score < 20 {
+    increase score by 1
+    if score == 15 {
+        continue
+    }
+    if score == 18 {
+        break
+    }
 }
 
 for item in [1,2,3] {
@@ -141,7 +150,7 @@ fetch "https://api.example.com/user" as data {
 
 ### Direct helpers
 
-- Core: `print`, `random`, `length`, `type_of`, `parse_number`, `to_string`
+- Core: `print`, `input`, `confirm`, `ask_number`, `choose`, `clear`, `random`, `length`, `type_of`, `parse_number`, `to_string`
 - String: `lower`, `upper`, `trim`, `contains`, `starts_with`, `ends_with`, `replace`, `split`, `join`, `slice`, `regex_is_match`
 - Collections: `push`, `pop`, `shift`, `unshift`, `keys`, `values`, `has_key`
 - Files/dirs: `file_read`, `file_write`, `file_append`, `file_exists`, `file_delete`, `file_copy`, `file_move`, `dir_exists`, `dir_make`, `dir_delete`, `dir_list`
@@ -166,6 +175,10 @@ Example:
 ```baba
 store result = math.sqrt(144)
 store ok = bot.discord_webhook_send("https://discord.com/api/webhooks/...", "Hello from BabaShell")
+store name = input("What is your name? ")
+if confirm("Send greeting?") {
+    emit ("Hello " + name)
+}
 ```
 
 ## VS Code Extension
@@ -192,4 +205,3 @@ Set executable path if needed:
 ## License
 
 Add your preferred license file (`LICENSE`) for open-source distribution.
-
