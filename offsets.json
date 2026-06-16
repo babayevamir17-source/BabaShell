@@ -1,0 +1,13 @@
+{
+  "version": "version-76173e47a79145c7",
+  "luau_load": "0x45A4F30",
+  "luaC_step": "0x453D638",
+  "luaD_throw": "0x4537A00",
+  "luau_execute": "0x454ACD0",
+  "luaH_new": "0x465AB10",
+  "luaV_gettable": "0x4565050",
+  "luaE_newthread": "0",
+  "lua_pushvalue": "0",
+  "luaV_settable": "0",
+  "luaD_rawrununprotected": "0"
+}
